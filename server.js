@@ -54,13 +54,9 @@ const asURL = (f) => `${__dirname}/public/${f}`;
 io.on('connection', (socket) => {
     // associate the socket with the client's unique identifier
     // this clientID is stored in the database to track who's playing in a scrabble game
-    // const clientID = socket.handshake.query.clientID;
-    // connectedClients[clientID] = socket;
-
-    // debugConsole(CATEGORY.CONNECTED, clientID);
+    connectedClients[socket.id] = socket;
 
     socket.on('disconnect', () => {
-        // debugConsole(CATEGORY.DISCONNECTED, clientID);
         delete connectedClients[socket.id];
     });
 
@@ -74,6 +70,12 @@ io.on('connection', (socket) => {
         console.log('pause');
         const { timestamp } = data;
         socket.broadcast.emit('pause', { data: { timestamp: timestamp } });
+    });
+
+    socket.on('rate', (data) => {
+        console.log('rate');
+        const { rate } = data;
+        socket.broadcast.emit('rate', { data: { rate: rate } });
     });
 
     // socket.on('joinScrabbleRoom', (data) => {
