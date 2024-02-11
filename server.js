@@ -15,29 +15,32 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/socket.io', express.static(__dirname + '/node_modules/socket.io/client-dist'));
 
-const dbConfig = process.env.DATABASE_URL ? {
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 5000,
-    idleTimeoutMillis: 10000
-} : {
-    user: 'postgres',
-    host: 'localhost',
-    database: 'watch',
-    password: 'admin',
-    port: 5432,
-    connectionTimeoutMillis: 5000,
-    idleTimeoutMillis: 10000
-};
-const pool = new Pool(dbConfig);
+// const dbConfig = process.env.DATABASE_URL ? {
+//     connectionString: process.env.DATABASE_URL,
+//     ssl: { rejectUnauthorized: false },
+//     connectionTimeoutMillis: 5000,
+//     idleTimeoutMillis: 10000
+// } : {
+//     user: 'postgres',
+//     host: 'localhost',
+//     database: 'watch',
+//     password: 'admin',
+//     port: 5432,
+//     connectionTimeoutMillis: 5000,
+//     idleTimeoutMillis: 10000
+// };
+// const pool = new Pool(dbConfig);
 
-const queryHandlerInstance = new QueryHandler('watch', pool);
+// const queryHandlerInstance = new QueryHandler('watch', pool);
 
 const asURL = (f) => `${__dirname}/public/${f}`;
 
 app.get('/watchroom', (req, res) => {
+    console.log('/watchroom');
+
     const code = req.query.code;
-    if (code && code.length === 5) {
+    console.log(code);
+    if (code && code.length === 10) {
         res.sendFile(asURL('watchroom.html'));
     } else {
         res.redirect('/');
@@ -53,56 +56,88 @@ io.on('connection', (socket) => {
 
     socket.on('watcherJoined', (data) => {
         console.log('watcherJoined');
-        const { roomCode } = data;
-        socket.broadcast.emit('watcherJoined', { data: { roomCode: roomCode } });
+        socket.broadcast.emit('watcherJoined', {
+            success: true,
+            signature: 'watcherJoined',
+            data: {
+                code: data.code
+            }
+        });
+    });
+
+    socket.on('loadVideo', (data) => {
+        console.log('loadVideo', data.videoID);
+        socket.broadcast.emit('loadVideo', {
+            success: true,
+            signature: 'loadVideo',
+            data: {
+                code: data.code,
+                videoID: data.videoID
+            }
+        });
     });
 
     socket.on('play', (data) => {
         console.log('play');
-        const { timestamp } = data;
-        socket.broadcast.emit('play', { data: { timestamp: timestamp } });
+        socket.broadcast.emit('play', {
+            success: true,
+            signature: 'play',
+            data: {
+                code: data.code,
+                timestamp: data.timestamp
+            }
+        });
     });
 
     socket.on('pause', (data) => {
         console.log('pause');
-        const { timestamp } = data;
-        socket.broadcast.emit('pause', { data: { timestamp: timestamp } });
+        socket.broadcast.emit('pause', {
+            success: true,
+            signature: 'pause',
+            data: {
+                code: data.code,
+                timestamp: data.timestamp
+            }
+        });
     });
 
     socket.on('rate', (data) => {
         console.log('rate');
-        const { rate } = data;
-        socket.broadcast.emit('rate', { data: { rate: rate } });
+        socket.broadcast.emit('rate', {
+            success: true,
+            signature: 'rate',
+            data: {
+                code: data.code,
+                rate: data.rate
+            }
+        });
     });
 
-    socket.on('createWatchRoom', (data) => {
-        const { } = data;
+    socket.on('createWatchRoom', () => {
         createWatchRoom(socket);
     });
 });
 
-
-
-
-
-async function createWatchRoom(socket, clientID, playerCount) {
+async function createWatchRoom(socket) {
     const signature = arguments.callee.name;
     console.log(signature);
-    
+
     try {
-        const newRoomCode = await generateRoomCode();
+        // const newCode = await generateCode();
 
         let columns = [KEYS.ROOM_CODE, KEYS.WATCHER_COUNT];
-        let values = [newRoomCode, 1];
+        // let values = [newCode, 1];
+        let values = ['1234567890', 1];
 
         const params = {
             columns: columns,
             values: values
         };
-        await queryHandlerInstance.insert(params);
+        // await queryHandlerInstance.insert(params);
 
         socketEmit(socket, signature, true, {
-            roomCode: newRoomCode
+            // code: newCode
+            code: '1234567890'
         });
     } catch (err) {
         console.error(err);
@@ -127,25 +162,25 @@ function socketEmit(socket, signature, success, data) {
     });
 }
 
-async function generateRoomCode() {
+async function generateCode() {
     const signature = arguments.callee.name;
     console.log(signature);
 
     try {
         while (true) {
-            let roomCode = '';
+            let code = '';
 
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 10; i++) {
                 const randomIndex = Math.floor(Math.random() * characters.length);
-                roomCode += characters.charAt(randomIndex);
+                code += characters.charAt(randomIndex);
             }
 
-            const record = getRowFromRoomCode(roomCode);
+            const record = getRowFromCode(code);
 
             if (!record.rows) {
-                return roomCode;
+                return code;
             } else {
-                console.log(`roomCode ${roomCode} was not unique. Trying again...`);
+                console.log(`code ${code} was not unique. Trying again...`);
             }
         }
     } catch (err) {
@@ -154,15 +189,15 @@ async function generateRoomCode() {
     }
 }
 
-async function getRowFromRoomCode(roomCode) {
+async function getRowFromCode(code) {
     const signature = arguments.callee.name;
     console.log(signature);
 
     try {
-        const params = { where: [{ key: KEYS.ROOM_CODE, value: roomCode }] };
+        const params = { where: [{ key: KEYS.CODE, value: code }] };
         const result = await queryHandlerInstance.select(params);
 
-        // query only ever returns one row since roomCode is unique
+        // query only ever returns one row since code is unique
         return result[0];
     } catch (err) {
         console.error(err);

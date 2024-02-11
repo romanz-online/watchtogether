@@ -1,7 +1,7 @@
 module.exports = {
     KEYS: {
         WATCHER_COUNT: 'watcher_count',
-        ROOM_CODE: 'room_code',
+        CODE: 'code',
         IP1: 'ip1',
         IP2: 'ip2',
         IP3: 'ip3',

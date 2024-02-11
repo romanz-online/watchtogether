@@ -8,11 +8,11 @@ $(document).ready(function () {
         console.log(success ? 'SUCCESS' : 'FAIL', signature);
 
         if (success) {
-            window.location.href = `/redirectToScrabbleRoom?roomCode=${data.roomCode}`;
+            window.location.href = `/watchroom?code=${data.code}`;
         }
     });
 
-    $('#createRoom').on('submit', function () {
+    $('#createRoom').on('click', function () {
         socket.emit('createWatchRoom');
     });
 });
