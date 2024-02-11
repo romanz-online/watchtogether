@@ -7,5 +7,5 @@ module.exports = {
         IP3: 'ip3',
         IP4: 'ip4'
     },
-    characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    characters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 };

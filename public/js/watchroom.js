@@ -138,4 +138,11 @@ $(document).ready(function () {
             });
         }
     });
+
+    $(window).on('beforeunload', function() {
+        event.preventDefault();
+        socket.emit('watcherLeave', {
+            code: code
+        });
+    });
 });

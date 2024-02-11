@@ -54,15 +54,20 @@ io.on('connection', (socket) => {
         delete connectedClients[socket.id];
     });
 
-    socket.on('watcherJoined', (data) => {
-        console.log('watcherJoined');
-        socket.broadcast.emit('watcherJoined', {
+    socket.on('watcherJoin', (data) => {
+        console.log('watcherJoin');
+        socket.broadcast.emit('watcherJoin', {
             success: true,
-            signature: 'watcherJoined',
+            signature: 'watcherJoin',
             data: {
                 code: data.code
             }
         });
+    });
+
+    socket.on('watcherLeave', (data) => {
+        console.log('watcherLeave');
+        // remove socket id from SQL row with data.code
     });
 
     socket.on('loadVideo', (data) => {
