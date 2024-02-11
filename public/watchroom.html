@@ -10,11 +10,15 @@
     <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/index.js"></script>
+    <script src="js/watchroom.js"></script>
 </head>
 
 <body>
-    <button id="createRoom" type="submit">Create Room</button>
+    <div id="player"></div>
+    <form id="videoLinkInput">
+        <input type="text" id="videoLink" action="javascript:void(0)">
+        <button type="submit">Submit</button>
+    </form>
 </body>
 
 </html>

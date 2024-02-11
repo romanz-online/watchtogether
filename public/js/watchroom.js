@@ -110,4 +110,8 @@ $(document).ready(function () {
             player.loadVideoById(inputValue, 5, 'large');
         }
     });
+
+    $('#createRoom').on('submit', function () {
+        socket.emit('createRoom');
+    });
 });

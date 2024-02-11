@@ -1,4 +1,6 @@
 const QueryHandler = require('./queryHandler');
+const constants = require('./constants');
+const { KEYS, characters } = constants;
 
 const path = require('path');
 const express = require('express');
@@ -33,31 +35,26 @@ const queryHandlerInstance = new QueryHandler('watch', pool);
 
 const asURL = (f) => `${__dirname}/public/${f}`;
 
-// app.post('/generateUsername', (req, res) => {
-//     const signature = 'generateUsername';
-//     debugConsole(CATEGORY.REQUEST, signature);
-
-//     const username = generateUsername();
-
-//     res.send({
-//         success: true,
-//         signature: signature,
-//         data: {
-//             username: username
-//         }
-//     });
-
-//     debugConsole(CATEGORY.SUCCESS, signature);
-// });
-
+app.get('/watchroom', (req, res) => {
+    const code = req.query.code;
+    if (code && code.length === 5) {
+        res.sendFile(asURL('watchroom.html'));
+    } else {
+        res.redirect('/');
+    }
+});
 
 io.on('connection', (socket) => {
-    // associate the socket with the client's unique identifier
-    // this clientID is stored in the database to track who's playing in a scrabble game
     connectedClients[socket.id] = socket;
 
     socket.on('disconnect', () => {
         delete connectedClients[socket.id];
+    });
+
+    socket.on('watcherJoined', (data) => {
+        console.log('watcherJoined');
+        const { roomCode } = data;
+        socket.broadcast.emit('watcherJoined', { data: { roomCode: roomCode } });
     });
 
     socket.on('play', (data) => {
@@ -78,56 +75,40 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('rate', { data: { rate: rate } });
     });
 
-    // socket.on('joinScrabbleRoom', (data) => {
-    //     const { roomCode } = data;
-    //     joinScrabbleRoom(socket, roomCode, clientID);
-    // });
+    socket.on('createWatchRoom', (data) => {
+        const { } = data;
+        createWatchRoom(socket);
+    });
 });
 
 
 
 
 
-// async function createScrabbleRoom(socket, clientID, playerCount) {
-//     const signature = arguments.callee.name;
-//     debugConsole(CATEGORY.FUNCTION, signature);
+async function createWatchRoom(socket, clientID, playerCount) {
+    const signature = arguments.callee.name;
+    console.log(signature);
+    
+    try {
+        const newRoomCode = await generateRoomCode();
 
-//     try {
-//         const newRoomCode = await generateRoomCode();
+        let columns = [KEYS.ROOM_CODE, KEYS.WATCHER_COUNT];
+        let values = [newRoomCode, 1];
 
-//         let columns = [KEYS.LAST_MODIFIED, KEYS.ROOM_CODE, KEYS.IP1, KEYS.PLAYER_COUNT, KEYS.WHOSE_TURN];
-//         let values = ['NOW()', newRoomCode, clientID, playerCount, 1];
+        const params = {
+            columns: columns,
+            values: values
+        };
+        await queryHandlerInstance.insert(params);
 
-//         // generate all players' docks as the game starts
-//         let remainingLetters = DEFAULT_REMAINING_LETTERS;
-//         for (let i = 1; i <= playerCount; i++) {
-//             const { newDock, newRemainingLetters } = getDockTiles(remainingLetters, '');
-
-//             const dockKey = `dock${i}`;
-//             columns.push(dockKey);
-//             values.push(newDock);
-
-//             remainingLetters = newRemainingLetters;
-//         }
-//         columns.push(KEYS.REMAINING_LETTERS);
-//         values.push(remainingLetters);
-
-//         const params = {
-//             columns: columns,
-//             values: values
-//         };
-//         await queryHandlerInstance.insert(params);
-
-//         socketEmit(socket, signature, true, {
-//             roomCode: newRoomCode
-//         });
-
-//         debugConsole(CATEGORY.SUCCESS, signature);
-//     } catch (err) {
-//         console.error(err);
-//         socketEmit(socket, signature, false, {});
-//     }
-// }
+        socketEmit(socket, signature, true, {
+            roomCode: newRoomCode
+        });
+    } catch (err) {
+        console.error(err);
+        socketEmit(socket, signature, false, {});
+    }
+}
 
 
 
@@ -187,15 +168,6 @@ async function getRowFromRoomCode(roomCode) {
         console.error(err);
         throw err;
     }
-}
-
-function getKeysFromPlayerNumber(playerNumber) {
-    return {
-        // ipKey: `ip${playerNumber}`,
-        // passKey: `pass${playerNumber}`,
-        // pointsKey: `points${playerNumber}`,
-        // dockKey: `dock${playerNumber}`
-    };
 }
 
 const PORT = process.env.PORT || 8080;
