@@ -1,24 +1,13 @@
-const constants = require('./constants');
-const {
-    WATCH_ROOM_TABLE,
-    WATCH_ROOM_USER_TABLE,
-    WATCH_ROOM_KEYS,
-    WATCH_ROOM_USER_KEYS,
-    CHARACTERS
-} = constants;
-
+const cron = require('node-cron');
 const path = require('path');
 const express = require('express');
 const { Pool } = require('pg');
-
 const app = express();
 const httpServer = require('http').createServer(app);
 const io = require('socket.io')(httpServer);
-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/socket.io', express.static(__dirname + '/node_modules/socket.io/client-dist'));
-const cron = require('node-cron');
 
 const dbConfig = process.env.DATABASE_URL ? {
     connectionString: process.env.DATABASE_URL,
@@ -35,6 +24,15 @@ const dbConfig = process.env.DATABASE_URL ? {
     idleTimeoutMillis: 10000
 };
 const pool = new Pool(dbConfig);
+
+const constants = require('./constants');
+const {
+    WATCH_ROOM_TABLE,
+    WATCH_ROOM_USER_TABLE,
+    WATCH_ROOM_KEYS,
+    WATCH_ROOM_USER_KEYS,
+    CHARACTERS
+} = constants;
 
 let connectedClients = {};
 let emptyRooms = {};
