@@ -2,8 +2,9 @@ let socket;
 let player;
 let state;
 let playbackRate;
-let code;
+let roomCode;
 let videoID;
+let watcherCount;
 
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
@@ -68,10 +69,9 @@ function getVideoIDFromURL(url) {
 function initSocket() {
     socket = io();
 
-    socket.on('loadVideo', (response) => {
-        const { success, signature, data } = response;
-        console.log(success ? 'SUCCESS' : 'FAIL', signature);
-        if (!success) return;
+    socket.on('loadVideoResponse', (response) => {
+        const data = validateResponse(response);
+        if (!data) return;
 
         if (videoID === data.videoID) return;
 
@@ -79,12 +79,11 @@ function initSocket() {
         player.loadVideoById(videoID, 5, 'large');
     });
 
-    socket.on('play', (response) => {
-        if (state === YT.PlayerState.PLAYING) return;
+    socket.on('playResponse', (response) => {
+        const data = validateResponse(response);
+        if (!data) return;
 
-        const { success, signature, data } = response;
-        console.log(success ? 'SUCCESS' : 'FAIL', signature);
-        if (!success) return;
+        if (state === YT.PlayerState.PLAYING) return;
 
         player.seekTo(data.timestamp, true);
 
@@ -92,12 +91,11 @@ function initSocket() {
         player.playVideo();
     });
 
-    socket.on('pause', (response) => {
-        if (state === YT.PlayerState.PAUSED) return;
+    socket.on('pauseResponse', (response) => {
+        const data = validateResponse(response);
+        if (!data) return;
 
-        const { success, signature, data } = response;
-        console.log(success ? 'SUCCESS' : 'FAIL', signature);
-        if (!success) return;
+        if (state === YT.PlayerState.PAUSED) return;
 
         player.seekTo(data.timestamp, true);
 
@@ -105,26 +103,54 @@ function initSocket() {
         player.pauseVideo();
     });
 
-    socket.on('rate', (response) => {
-        const { success, signature, data } = response;
-        console.log(success ? 'SUCCESS' : 'FAIL', signature);
-        if (!success) return;
+    socket.on('rateResponse', (response) => {
+        const data = validateResponse(response);
+        if (!data) return;
 
         if (playbackRate === data.rate) return;
 
         playbackRate = data.rate;
         player.setPlaybackRate(playbackRate);
     });
+
+    socket.on('watcherJoinResponse', (response) => {
+        const data = validateResponse(response);
+        if (!data) return;
+        
+        watcherCount++;
+    });
+
+    socket.on('watcherLeaveResponse', (response) => {
+        const data = validateResponse(response);
+        if (!data) return;
+
+        watcherCount--;
+    });
 }
 
-function getCode() {
-    return new URLSearchParams(window.location.search).get('code');
+function getRoomCode() {
+    return new URLSearchParams(window.location.search).get('roomCode');
+}
+
+function validateResponse(response) {
+    const { success, signature, data } = response;
+    console.log(success ? 'SUCCESS' : 'FAIL', signature);
+    if (!success) return null;
+    if (data.roomCode !== roomCode) return null;
+    return data;
 }
 
 $(document).ready(function () {
-    code = getCode();
+    roomCode = getCode();
+    watcherCount = 1;
 
     initSocket();
+
+    // forces the youtube player to not be cached so that it loads correctly
+    const scriptUrl = 'https://www.youtube.com/iframe_api?v=' + Date.now();
+    const scriptElement = document.createElement('script');
+    scriptElement.src = scriptUrl;
+    document.body.appendChild(scriptElement);
 
     $('#videoLinkInput').on('submit', function () {
         event.preventDefault();
@@ -133,16 +159,15 @@ $(document).ready(function () {
             player.loadVideoById(inputValue, 5, 'large');
             videoID = inputValue;
             socket.emit('loadVideo', {
-                code: code,
+                roomCode: roomCode,
                 videoID: inputValue
             });
         }
     });
 
-    $(window).on('beforeunload', function() {
-        event.preventDefault();
+    $(window).on('beforeunload', function () {
         socket.emit('watcherLeave', {
-            code: code
+            roomCode: roomCode
         });
     });
 });

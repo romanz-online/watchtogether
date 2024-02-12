@@ -8,7 +8,7 @@ $(document).ready(function () {
         console.log(success ? 'SUCCESS' : 'FAIL', signature);
 
         if (success) {
-            window.location.href = `/watchroom?code=${data.code}`;
+            window.location.href = `/watchroom?roomCode=${data.roomCode}`;
         }
     });
 
