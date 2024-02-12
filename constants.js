@@ -7,10 +7,21 @@ module.exports = {
         EMPTY_SINCE: 'empty_since'
     },
     WATCH_ROOM_USER_KEYS: {
-        SOCKET_ID: 'socket_id', 
+        SOCKET_ID: 'socket_id',
         ROOM_CODE: 'room_code',
     },
-    CHARACTERS: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    CHARACTERS: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+    SIGNALS: {
+        CONNECTION: 'connection',
+        DISCONNECT: 'disconnect',
+        WATCHER_JOIN: 'watcherJoin',
+        WATCHER_LEAVE: 'watcherLeave',
+        LOAD_VIDEO: 'loadVideo',
+        PLAY: 'play',
+        PAUSE: 'pause',
+        RATE: 'rate',
+        CREATE_WATCH_ROOM: 'createWatchRoom'
+    }
 };
 
 // CREATE TABLE WatchRoom (

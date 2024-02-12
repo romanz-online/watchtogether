@@ -31,7 +31,8 @@ const {
     WATCH_ROOM_USER_TABLE,
     WATCH_ROOM_KEYS,
     WATCH_ROOM_USER_KEYS,
-    CHARACTERS
+    CHARACTERS,
+    SIGNALS
 } = constants;
 
 let connectedClients = {};
@@ -50,18 +51,18 @@ app.get('/watchroom', (req, res) => {
     res.sendFile(asURL((roomCode && roomCode.length === 10) ? 'watchroom.html' : 'index.html'));
 });
 
-io.on('connection', (socket) => {
+io.on(SIGNALS.CONNECTION, (socket) => {
     connectedClients[socket.id] = socket;
 
-    socket.on('disconnect', () => {
+    socket.on(SIGNALS.DISCONNECT, () => {
         delete connectedClients[socket.id];
     });
 
-    socket.on('watcherJoin', (data) => {
+    socket.on(SIGNALS.WATCHER_JOIN, (data) => {
         watcherJoin(socket, data.roomCode);
     });
 
-    socket.on('watcherLeave', (data) => {
+    socket.on(SIGNALS.WATCHER_LEAVE, (data) => {
         watcherLeave(socket, data.roomCode);
         // remove socket id from SQL row with data.roomCode
         if (true /* there are no watchers in the room */) {
@@ -69,42 +70,41 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('loadVideo', (data) => {
-        emitToRoomWatchers(socket, data.roomCode, 'loadVideo', {
+    socket.on(SIGNALS.LOAD_VIDEO, (data) => {
+        emitToRoomWatchers(socket, data.roomCode, SIGNALS.LOAD_VIDEO, {
             roomCode: data.roomCode,
             videoID: data.videoID
         });
     });
 
-    socket.on('play', (data) => {
-        emitToRoomWatchers(socket, data.roomCode, 'play', {
+    socket.on(SIGNALS.PLAY, (data) => {
+        emitToRoomWatchers(socket, data.roomCode, SIGNALS.PLAY, {
             roomCode: data.roomCode,
             timestamp: data.timestamp
         });
     });
 
-    socket.on('pause', (data) => {
-        emitToRoomWatchers(socket, data.roomCode, 'pause', {
+    socket.on(SIGNALS.PAUSE, (data) => {
+        emitToRoomWatchers(socket, data.roomCode, SIGNALS.PAUSE, {
             roomCode: data.roomCode,
             timestamp: data.timestamp
         });
     });
 
-    socket.on('rate', (data) => {
-        emitToRoomWatchers(socket, data.roomCode, 'rate', {
+    socket.on(SIGNALS.RATE, (data) => {
+        emitToRoomWatchers(socket, data.roomCode, SIGNALS.RATE, {
             roomCode: data.roomCode,
             rate: data.rate
         });
     });
 
-    socket.on('createWatchRoom', () => {
+    socket.on(SIGNALS.CREATE_WATCH_ROOM, () => {
         createWatchRoom(socket);
     });
 });
 
 async function createWatchRoom(socket) {
-    const signature = arguments.callee.name;
-    console.log(signature);
+    console.log(arguments.callee.name);
 
     try {
         const newCode = await generateRoomCode();
@@ -116,18 +116,17 @@ async function createWatchRoom(socket) {
         ];
         const result = await executeQuery(query);
 
-        socketEmit(socket, signature, true, {
+        socketEmit(socket, SIGNALS.CREATE_WATCH_ROOM, true, {
             roomCode: newRoomCode
         });
     } catch (err) {
         console.error(err);
-        socketEmit(socket, signature, false, {});
+        socketEmit(socket, SIGNALS.CREATE_WATCH_ROOM, false, {});
     }
 }
 
 async function watcherJoin(socket, roomCode) {
-    const signature = arguments.callee.name;
-    console.log(signature);
+    console.log(arguments.callee.name);
 
     try {
         const query = [
@@ -137,16 +136,15 @@ async function watcherJoin(socket, roomCode) {
         ];
         const result = await executeQuery(query);
 
-        emitToRoomWatchers(socket, roomCode, signature, {});
+        emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_JOIN, {});
     } catch (err) {
         console.error(err);
-        socketEmit(socket, signature, false, {});
+        socketEmit(socket, SIGNALS.WATCHER_JOIN, false, {});
     }
 }
 
 async function watcherLeave(socket, roomCode) {
-    const signature = arguments.callee.name;
-    console.log(signature);
+    console.log(arguments.callee.name);
 
     try {
         const query = [
@@ -156,7 +154,7 @@ async function watcherLeave(socket, roomCode) {
         ];
         const result = await executeQuery(query);
 
-        let notifiedCount = emitToRoomWatchers(socket, roomCode, signature, { roomCode: data.roomCode });
+        let notifiedCount = emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_LEAVE, { roomCode: data.roomCode });
 
         if (notifiedCount === 0) {
             const query1 = [
@@ -168,13 +166,12 @@ async function watcherLeave(socket, roomCode) {
         }
     } catch (err) {
         console.error(err);
-        socketEmit(socket, signature, false, {});
+        socketEmit(socket, SIGNALS.WATCHER_LEAVE, false, {});
     }
 }
 
 async function deleteOldRecords() {
-    const signature = arguments.callee.name;
-    console.log(signature);
+    console.log(arguments.callee.name);
 
     try {
         // delete every room that's in emptyRooms and which passes the query with `NOW() - INTERVAL '5 minutes'`
@@ -195,8 +192,7 @@ async function deleteOldRecords() {
 // HELPER METHODS
 
 async function emitToRoomWatchers(socket, roomCode, signal, data) {
-    const signature = arguments.callee.name;
-    console.log(signature, signal, data);
+    console.log(arguments.callee.name);
 
     try {
         let count = 0;
@@ -215,17 +211,16 @@ async function emitToRoomWatchers(socket, roomCode, signal, data) {
     }
 }
 
-function socketEmit(socket, signature, success, data) {
-    socket.emit(`${signature}Response`, {
+function socketEmit(socket, signal, success, data) {
+    socket.emit(`${signal}Response`, {
         success: success,
-        signature: signature,
+        signal: signal,
         data: data
     });
 }
 
 async function generateRoomCode() {
-    const signature = arguments.callee.name;
-    console.log(signature);
+    console.log(arguments.callee.name);
 
     try {
         while (true) {
@@ -238,11 +233,10 @@ async function generateRoomCode() {
 
             const record = getRowFromRoomCode(roomCode);
 
-            if (!record.rows) {
+            if (!record.rows)
                 return roomCode;
-            } else {
-                console.log(`roomCode ${roomCode} was not unique. Trying again...`);
-            }
+
+            console.log(`roomCode ${roomCode} was not unique. Trying again...`);
         }
     } catch (err) {
         console.error(err);
@@ -251,8 +245,7 @@ async function generateRoomCode() {
 }
 
 async function getRowFromRoomCode(roomCode) {
-    const signature = arguments.callee.name;
-    console.log(signature);
+    console.log(arguments.callee.name);
 
     try {
         const query = [
@@ -269,8 +262,7 @@ async function getRowFromRoomCode(roomCode) {
 }
 
 async function getUsersFromRoomCode(roomCode) {
-    const signature = arguments.callee.name;
-    console.log(signature);
+    console.log(arguments.callee.name);
 
     try {
         const query = [
