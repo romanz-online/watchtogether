@@ -67,31 +67,19 @@ io.on(SIGNALS.CONNECTION, (socket) => {
     });
 
     socket.on(SIGNALS.LOAD_VIDEO, (data) => {
-        emitToRoomWatchers(socket, data.roomCode, SIGNALS.LOAD_VIDEO, {
-            roomCode: data.roomCode,
-            videoID: data.videoID
-        });
+        loadVideo(socket, data.roomCode, data.videoID);
     });
 
     socket.on(SIGNALS.PLAY, (data) => {
-        emitToRoomWatchers(socket, data.roomCode, SIGNALS.PLAY, {
-            roomCode: data.roomCode,
-            timestamp: data.timestamp
-        });
+        play(socket, data.roomCode, data.timestamp);
     });
 
     socket.on(SIGNALS.PAUSE, (data) => {
-        emitToRoomWatchers(socket, data.roomCode, SIGNALS.PAUSE, {
-            roomCode: data.roomCode,
-            timestamp: data.timestamp
-        });
+        pause(socket, data.roomCode, data.timestamp);
     });
 
-    socket.on(SIGNALS.RATE, (data) => {
-        emitToRoomWatchers(socket, data.roomCode, SIGNALS.RATE, {
-            roomCode: data.roomCode,
-            rate: data.rate
-        });
+    socket.on(SIGNALS.PLAYBACK_RATE, (data) => {
+        playbackRate(socket, data.roomCode, data.playbackRate);
     });
 
     socket.on(SIGNALS.CREATE_WATCH_ROOM, () => {
@@ -114,6 +102,7 @@ async function createWatchRoom(socket) {
 
         socketEmit(socket, SIGNALS.CREATE_WATCH_ROOM, true, {
             roomCode: newRoomCode
+            // roomCode: '1234567890'
         });
     } catch (err) {
         console.error(err);
@@ -132,7 +121,15 @@ async function watcherJoin(socket, roomCode) {
         ];
         const result = await executeQuery(query);
 
-        delete emptyRooms[roomCode];
+        const query1 = [
+            `UPDATE ${WATCH_ROOM_TABLE}`,
+            `SET ${WATCH_ROOM_KEYS.NUM_WATCHERS}=${WATCH_ROOM_KEYS.NUM_WATCHERS} + 1`,
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+        ];
+        const result1 = await executeQuery(query1);
+
+        if(emptyRooms[roomCode])
+            delete emptyRooms[roomCode];
 
         emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_JOIN, {});
     } catch (err) {
@@ -152,6 +149,13 @@ async function watcherLeave(socket, roomCode) {
         ];
         const result = await executeQuery(query);
 
+        const query1 = [
+            `UPDATE ${WATCH_ROOM_TABLE}`,
+            `SET ${WATCH_ROOM_KEYS.NUM_WATCHERS}=${WATCH_ROOM_KEYS.NUM_WATCHERS} - 1`,
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+        ];
+        const result1 = await executeQuery(query1);
+
         let notifiedCount = emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_LEAVE, { roomCode: data.roomCode });
 
         if (notifiedCount === 0) {
@@ -162,11 +166,95 @@ async function watcherLeave(socket, roomCode) {
             ];
             const result1 = await executeQuery(query1);
 
-            emptyRooms[roomCode] = true; // "true" doesn't actually mean anything, it just inserts a truthy value
+            emptyRooms[roomCode] = true; // "true" doesn't actually mean anything, it's just a truthy value
         }
     } catch (err) {
         console.error(err);
         socketEmit(socket, SIGNALS.WATCHER_LEAVE, false, {});
+    }
+}
+
+async function loadVideo(socket, roomCode, videoID) {
+    console.log(arguments.callee.name);
+
+    try {
+        const query = [
+            `UPDATE ${WATCH_ROOM_TABLE}`,
+            `SET ${WATCH_ROOM_KEYS.VIDEO_ID}=${videoID}`,
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+        ];
+        const result = await executeQuery(query);
+
+        emitToRoomWatchers(socket, data.roomCode, SIGNALS.LOAD_VIDEO, {
+            roomCode: data.roomCode,
+            videoID: data.videoID
+        });
+    } catch (err) {
+        console.error(err);
+        socketEmit(socket, SIGNALS.LOAD_VIDEO, false, {});
+    }
+}
+
+async function play(socket, roomCode, timestamp) {
+    console.log(arguments.callee.name);
+
+    try {
+        const query = [
+            `UPDATE ${WATCH_ROOM_TABLE}`,
+            `SET ${WATCH_ROOM_KEYS.TIMESTAMP}=${timestamp}`,
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+        ];
+        const result = await executeQuery(query);
+
+        emitToRoomWatchers(socket, data.roomCode, SIGNALS.PLAY, {
+            roomCode: data.roomCode,
+            timestamp: data.timestamp
+        });
+    } catch (err) {
+        console.error(err);
+        socketEmit(socket, SIGNALS.PLAY, false, {});
+    }
+}
+
+async function pause(socket, roomCode, timestamp) {
+    console.log(arguments.callee.name);
+
+    try {
+        const query = [
+            `UPDATE ${WATCH_ROOM_TABLE}`,
+            `SET ${WATCH_ROOM_KEYS.TIMESTAMP}=${timestamp}`,
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+        ];
+        const result = await executeQuery(query);
+
+        emitToRoomWatchers(socket, data.roomCode, SIGNALS.PAUSE, {
+            roomCode: data.roomCode,
+            timestamp: data.timestamp
+        });
+    } catch (err) {
+        console.error(err);
+        socketEmit(socket, SIGNALS.PAUSE, false, {});
+    }
+}
+
+async function playbackRate(socket, roomCode, playbackRate) {
+    console.log(arguments.callee.name);
+
+    try {
+        const query = [
+            `UPDATE ${WATCH_ROOM_TABLE}`,
+            `SET ${WATCH_ROOM_KEYS.PLAYBACK_RATE}=${playbackRate}`,
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+        ];
+        const result = await executeQuery(query);
+
+        emitToRoomWatchers(socket, data.roomCode, SIGNALS.PLAYBACK_RATE, {
+            roomCode: data.roomCode,
+            playbackRate: data.playbackRate
+        });
+    } catch (err) {
+        console.error(err);
+        socketEmit(socket, SIGNALS.PLAYBACK_RATE, false, {});
     }
 }
 

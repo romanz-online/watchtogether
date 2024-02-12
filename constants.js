@@ -4,6 +4,9 @@ module.exports = {
     WATCH_ROOM_KEYS: {
         ROOM_CODE: 'room_code',
         VIDEO_ID: 'video_id',
+        NUM_WATCHERS: 'num_watchers',
+        TIMESTAMP: 'timestamp',
+        PLAYBACK_RATE: 'playback_rate',
         EMPTY_SINCE: 'empty_since'
     },
     WATCH_ROOM_USER_KEYS: {
@@ -19,7 +22,7 @@ module.exports = {
         LOAD_VIDEO: 'loadVideo',
         PLAY: 'play',
         PAUSE: 'pause',
-        RATE: 'rate',
+        PLAYBACK_RATE: 'playbackRate',
         CREATE_WATCH_ROOM: 'createWatchRoom'
     }
 };
@@ -28,6 +31,9 @@ module.exports = {
 //     id SERIAL PRIMARY KEY,
 //     room_code VARCHAR(10) UNIQUE NOT NULL,
 //     video_id VARCHAR(50) DEFAULT '',
+//     num_watchers INTEGER DEFAULT 0,
+//     timestamp DOUBLE DEFAULT 0.0,
+//     playback_rate DOUBLE DEFAULT 1.0,
 //     empty_since TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 // );
 

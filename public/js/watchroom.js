@@ -33,9 +33,10 @@ function onPlaybackRateChange(event) {
     if (playbackRate === player.getPlaybackRate()) return;
 
     playbackRate = player.getPlaybackRate();
-    socket.emit('rate', {
+
+    socket.emit('playbackRate', {
         code: code,
-        rate: playbackRate
+        playbackRate: playbackRate
     });
 }
 
@@ -103,13 +104,13 @@ function initSocket() {
         player.pauseVideo();
     });
 
-    socket.on('rateResponse', (response) => {
+    socket.on('playbackRateResponse', (response) => {
         const data = validateResponse(response);
         if (!data) return;
 
-        if (playbackRate === data.rate) return;
+        if (playbackRate === data.playbackRate) return;
 
-        playbackRate = data.rate;
+        playbackRate = data.playbackRate;
         player.setPlaybackRate(playbackRate);
     });
 
@@ -141,10 +142,14 @@ function validateResponse(response) {
 }
 
 $(document).ready(function () {
-    roomCode = getCode();
-    watcherCount = 1;
+    roomCode = getRoomCode();
+    watcherCount = 0;
 
     initSocket();
+
+    socket.emit('watcherJoin', {
+        roomCode: roomCode
+    });
 
     // forces the youtube player to not be cached so that it loads correctly
     const scriptUrl = 'https://www.youtube.com/iframe_api?v=' + Date.now();
