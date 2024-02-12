@@ -64,10 +64,6 @@ io.on(SIGNALS.CONNECTION, (socket) => {
 
     socket.on(SIGNALS.WATCHER_LEAVE, (data) => {
         watcherLeave(socket, data.roomCode);
-        // remove socket id from SQL row with data.roomCode
-        if (true /* there are no watchers in the room */) {
-            emptyRooms[roomCode] = roomCode;
-        }
     });
 
     socket.on(SIGNALS.LOAD_VIDEO, (data) => {
@@ -136,6 +132,8 @@ async function watcherJoin(socket, roomCode) {
         ];
         const result = await executeQuery(query);
 
+        delete emptyRooms[roomCode];
+
         emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_JOIN, {});
     } catch (err) {
         console.error(err);
@@ -163,6 +161,8 @@ async function watcherLeave(socket, roomCode) {
                 `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
             ];
             const result1 = await executeQuery(query1);
+
+            emptyRooms[roomCode] = true; // "true" doesn't actually mean anything, it just inserts a truthy value
         }
     } catch (err) {
         console.error(err);
