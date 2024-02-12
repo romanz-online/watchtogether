@@ -10,7 +10,7 @@ module.exports = {
         SOCKET_ID: 'socket_id', 
         ROOM_CODE: 'room_code',
     },
-    characters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    CHARACTERS: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 };
 
 // CREATE TABLE WatchRoom (

@@ -4,7 +4,7 @@ const {
     WATCH_ROOM_USER_TABLE,
     WATCH_ROOM_KEYS,
     WATCH_ROOM_USER_KEYS,
-    characters
+    CHARACTERS
 } = constants;
 
 const path = require('path');
@@ -234,8 +234,8 @@ async function generateRoomCode() {
             let roomCode = '';
 
             for (let i = 0; i < 10; i++) {
-                const randomIndex = Math.floor(Math.random() * characters.length);
-                roomCode += characters.charAt(randomIndex);
+                const randomIndex = Math.floor(Math.random() * CHARACTERS.length);
+                roomCode += CHARACTERS.charAt(randomIndex);
             }
 
             const record = getRowFromRoomCode(roomCode);
