@@ -345,13 +345,44 @@ async function playbackRate(socket, roomCode, playbackRate) {
 }
 
 async function deleteOldRecords() {
-    // console.log(arguments.callee.name);
+    console.log(arguments.callee.name);
 
     try {
-        // delete every room that's in emptyRooms and which passes the query with `NOW() - INTERVAL '5 minutes'`
+        let roomsToDelete = [];
+        for (const roomCode in emptyRooms) {
+            if (!emptyRooms.hasOwnProperty(roomCode)) continue;
 
-        // const params = { where: [{ key: `${WATCH_ROOM_KEYS.LAST_MODIFIED}<`, value: `NOW() - INTERVAL '5 minutes'`, type: 'SQL' }] };
-        // await queryHandlerInstance.delete(params);
+            const query = [
+                `SELECT 1 FROM ${WATCH_ROOM_TABLE}`,
+                `WHERE ${WATCH_ROOM_KEYS.EMPTY_SINCE}<=NOW() - INTERVAL '5 minutes'`,
+                `AND ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
+            ];
+            const result = await executeQuery(query);
+
+            if (result.length === 0) continue;
+
+            const query1 = [
+                `DELETE FROM ${WATCH_ROOM_USER_TABLE}`,
+                `WHERE ${WATCH_ROOM_USER_KEYS.ROOM_CODE}='${roomCode}';`
+            ];
+            const result1 = await executeQuery(query1);
+
+            const query2 = [
+                `DELETE FROM ${WATCH_ROOM_TABLE}`,
+                `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
+            ];
+            const result2 = await executeQuery(query2);
+
+            roomsToDelete.push(roomCode);
+        }
+
+        if (roomsToDelete.length === 0) {
+            console.log('no rooms to delete');
+        }
+        
+        for (const roomCode of roomsToDelete) {
+            delete emptyRooms[roomCode];
+        }
     } catch (err) {
         console.error(err);
     }

@@ -67,6 +67,10 @@ function getVideoIDFromURL(url) {
     return (match && match[1]) ? match[1] : null;
 }
 
+function copyURLToClipboard() {
+    navigator.clipboard.writeText(window.location.href);
+}
+
 function initSocket() {
     socket = io();
 
@@ -117,10 +121,10 @@ function initSocket() {
     socket.on('watcherJoinResponse', (response) => {
         const data = validateResponse(response);
         if (!data) return;
-        
+
         numWatchers = data.numWatchers;
 
-        $('#numWatchers').text(numWatchers);
+        document.getElementById('numWatchers').textContent = numWatchers;
     });
 
     socket.on('watcherLeaveResponse', (response) => {
@@ -128,8 +132,38 @@ function initSocket() {
         if (!data) return;
 
         numWatchers = data.numWatchers;
+
+        document.getElementById('numWatchers').textContent = numWatchers;
+    });
+}
+
+function initHTML() {
+    // forces the youtube player to not be cached so that it loads correctly
+    const scriptUrl = 'https://www.youtube.com/iframe_api?v=' + Date.now();
+    const scriptElement = document.createElement('script');
+    scriptElement.src = scriptUrl;
+    document.body.appendChild(scriptElement);
+
+    document.getElementById('videoLinkInput').addEventListener('submit', function(event) {
+        event.preventDefault();
         
-        $('#numWatchers').text(numWatchers);
+        const inputValue = document.getElementById('videoLink').value;
+        const retVal = getVideoIDFromURL(inputValue);
+        const vID = retVal ? retVal : inputValue;
+    
+        player.loadVideoById(vID, 5, 'large');
+        videoID = vID;
+    
+        socket.emit('loadVideo', {
+            roomCode: roomCode,
+            videoID: vID
+        });
+    });
+
+    window.addEventListener('beforeunload', function(event) {
+        socket.emit('watcherLeave', {
+            roomCode: roomCode
+        });
     });
 }
 
@@ -138,14 +172,14 @@ function getRoomCode() {
 }
 
 function validateResponse(response) {
-    const { success, signature, data } = response;
-    console.log(success ? 'SUCCESS' : 'FAIL', signature);
+    const { success, signal, data } = response;
+    console.log(success ? 'SUCCESS' : 'FAIL', signal);
     if (!success) return null;
     if (data.roomCode !== roomCode) return null;
     return data;
 }
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     roomCode = getRoomCode();
     numWatchers = 0;
 
@@ -155,28 +189,5 @@ $(document).ready(function () {
         roomCode: roomCode
     });
 
-    // forces the youtube player to not be cached so that it loads correctly
-    const scriptUrl = 'https://www.youtube.com/iframe_api?v=' + Date.now();
-    const scriptElement = document.createElement('script');
-    scriptElement.src = scriptUrl;
-    document.body.appendChild(scriptElement);
-
-    $('#videoLinkInput').on('submit', function () {
-        event.preventDefault();
-        const inputValue = getVideoIDFromURL($('#videoLink').val());
-        if (inputValue) {
-            player.loadVideoById(inputValue, 5, 'large');
-            videoID = inputValue;
-            socket.emit('loadVideo', {
-                roomCode: roomCode,
-                videoID: inputValue
-            });
-        }
-    });
-
-    $(window).on('beforeunload', function () {
-        socket.emit('watcherLeave', {
-            roomCode: roomCode
-        });
-    });
+    initHTML();
 });

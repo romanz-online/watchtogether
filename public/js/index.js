@@ -1,6 +1,6 @@
 let socket;
 
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     socket = io();
 
     socket.on('createWatchRoomResponse', (response) => {
@@ -12,7 +12,7 @@ $(document).ready(function () {
         }
     });
 
-    $('#createRoom').on('click', function () {
+    document.getElementById('createRoom').addEventListener('click', function () {
         socket.emit('createWatchRoom');
     });
 });
