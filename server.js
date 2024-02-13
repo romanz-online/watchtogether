@@ -99,9 +99,17 @@ io.on(SIGNALS.CONNECTION, (socket) => {
 });
 
 async function createWatchRoom(socket) {
+    const responseSignal = SIGNALS.CREATE_WATCH_ROOM;
     console.log(arguments.callee.name);
 
     try {
+        if (SIMULATOR) {
+            socketEmit(socket, responseSignal, true, {
+                roomCode: '1234567890'
+            });
+            return;
+        }
+
         const newRoomCode = await generateRoomCode();
 
         const query = [
@@ -111,20 +119,28 @@ async function createWatchRoom(socket) {
         ];
         const result = await executeQuery(query);
 
-        socketEmit(socket, SIGNALS.CREATE_WATCH_ROOM, true, {
+        socketEmit(socket, responseSignal, true, {
             roomCode: newRoomCode
-            // roomCode: '1234567890'
         });
     } catch (err) {
         console.error(err);
-        socketEmit(socket, SIGNALS.CREATE_WATCH_ROOM, false, {});
+        socketEmit(socket, responseSignal, false, {});
     }
 }
 
 async function watcherJoin(socket, roomCode) {
+    const responseSignal = SIGNALS.WATCHER_JOIN;
     console.log(arguments.callee.name);
 
     try {
+        if (SIMULATOR) {
+            socketEmit(socket, responseSignal, true, {
+                roomCode: '1234567890',
+                numWatchers: 1
+            });
+            return;
+        }
+
         const query = [
             `INSERT INTO ${WATCH_ROOM_USER_TABLE}`,
             `(${WATCH_ROOM_USER_KEYS.ROOM_CODE}, ${WATCH_ROOM_USER_KEYS.SOCKET_ID})`,
@@ -145,21 +161,30 @@ async function watcherJoin(socket, roomCode) {
         if (emptyRooms[roomCode])
             delete emptyRooms[roomCode];
 
-        emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_JOIN,
+        emitToRoomWatchers(socket, roomCode, responseSignal,
             {
                 roomCode: roomCode,
                 numWatchers: newNumWatchers
             });
     } catch (err) {
         console.error(err);
-        socketEmit(socket, SIGNALS.WATCHER_JOIN, false, {});
+        socketEmit(socket, responseSignal, false, {});
     }
 }
 
 async function watcherLeave(socket, roomCode) {
+    const responseSignal = SIGNALS.WATCHER_LEAVE;
     console.log(arguments.callee.name);
 
     try {
+        if (SIMULATOR) {
+            socketEmit(socket, responseSignal, true, {
+                roomCode: '1234567890',
+                numWatchers: -1
+            });
+            return;
+        }
+
         const query = [
             `DELETE FROM ${WATCH_ROOM_USER_TABLE}`,
             `WHERE ${WATCH_ROOM_USER_KEYS.ROOM_CODE}='${roomCode}'`,
@@ -187,7 +212,7 @@ async function watcherLeave(socket, roomCode) {
 
             emptyRooms[roomCode] = true; // "true" doesn't actually mean anything, it's just a truthy value
         } else {
-            emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_LEAVE,
+            emitToRoomWatchers(socket, roomCode, responseSignal,
                 {
                     roomCode: roomCode,
                     numWatchers: newNumWatchers
@@ -195,14 +220,23 @@ async function watcherLeave(socket, roomCode) {
         }
     } catch (err) {
         console.error(err);
-        socketEmit(socket, SIGNALS.WATCHER_LEAVE, false, {});
+        socketEmit(socket, responseSignal, false, {});
     }
 }
 
 async function loadVideo(socket, roomCode, videoID) {
+    const responseSignal = SIGNALS.LOAD_VIDEO;
     console.log(arguments.callee.name);
 
     try {
+        if (SIMULATOR) {
+            socketEmit(socket, responseSignal, true, {
+                roomCode: '1234567890',
+                videoID: videoID
+            });
+            return;
+        }
+
         const query = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
             `SET ${WATCH_ROOM_KEYS.VIDEO_ID}=${videoID}`,
@@ -210,20 +244,29 @@ async function loadVideo(socket, roomCode, videoID) {
         ];
         const result = await executeQuery(query);
 
-        emitToRoomWatchers(socket, roomCode, SIGNALS.LOAD_VIDEO, {
+        emitToRoomWatchers(socket, roomCode, responseSignal, {
             roomCode: roomCode,
             videoID: videoID
         });
     } catch (err) {
         console.error(err);
-        socketEmit(socket, SIGNALS.LOAD_VIDEO, false, {});
+        socketEmit(socket, responseSignal, false, {});
     }
 }
 
 async function play(socket, roomCode, timestamp) {
+    const responseSignal = SIGNALS.PLAY;
     console.log(arguments.callee.name);
 
     try {
+        if (SIMULATOR) {
+            socketEmit(socket, responseSignal, true, {
+                roomCode: '1234567890',
+                timestamp: timestamp
+            });
+            return;
+        }
+
         const query = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
             `SET ${WATCH_ROOM_KEYS.TIMESTAMP}=${timestamp}`,
@@ -231,20 +274,29 @@ async function play(socket, roomCode, timestamp) {
         ];
         const result = await executeQuery(query);
 
-        emitToRoomWatchers(socket, roomCode, SIGNALS.PLAY, {
+        emitToRoomWatchers(socket, roomCode, responseSignal, {
             roomCode: roomCode,
             timestamp: timestamp
         });
     } catch (err) {
         console.error(err);
-        socketEmit(socket, SIGNALS.PLAY, false, {});
+        socketEmit(socket, responseSignal, false, {});
     }
 }
 
 async function pause(socket, roomCode, timestamp) {
+    const responseSignal = SIGNALS.PAUSE;
     console.log(arguments.callee.name);
 
     try {
+        if (SIMULATOR) {
+            socketEmit(socket, responseSignal, true, {
+                roomCode: '1234567890',
+                timestamp: timestamp
+            });
+            return;
+        }
+
         const query = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
             `SET ${WATCH_ROOM_KEYS.TIMESTAMP}=${timestamp}`,
@@ -252,20 +304,29 @@ async function pause(socket, roomCode, timestamp) {
         ];
         const result = await executeQuery(query);
 
-        emitToRoomWatchers(socket, roomCode, SIGNALS.PAUSE, {
+        emitToRoomWatchers(socket, roomCode, responseSignal, {
             roomCode: roomCode,
             timestamp: timestamp
         });
     } catch (err) {
         console.error(err);
-        socketEmit(socket, SIGNALS.PAUSE, false, {});
+        socketEmit(socket, responseSignal, false, {});
     }
 }
 
 async function playbackRate(socket, roomCode, playbackRate) {
+    const responseSignal = SIGNALS.PLAYBACK_RATE;
     console.log(arguments.callee.name);
 
     try {
+        if (SIMULATOR) {
+            socketEmit(socket, responseSignal, true, {
+                roomCode: '1234567890',
+                playbackRate: playbackRate
+            });
+            return;
+        }
+
         const query = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
             `SET ${WATCH_ROOM_KEYS.PLAYBACK_RATE}=${playbackRate}`,
@@ -273,13 +334,13 @@ async function playbackRate(socket, roomCode, playbackRate) {
         ];
         const result = await executeQuery(query);
 
-        emitToRoomWatchers(socket, roomCode, SIGNALS.PLAYBACK_RATE, {
+        emitToRoomWatchers(socket, roomCode, responseSignal, {
             roomCode: roomCode,
             playbackRate: playbackRate
         });
     } catch (err) {
         console.error(err);
-        socketEmit(socket, SIGNALS.PLAYBACK_RATE, false, {});
+        socketEmit(socket, responseSignal, false, {});
     }
 }
 
