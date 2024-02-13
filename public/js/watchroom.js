@@ -119,6 +119,8 @@ function initSocket() {
         if (!data) return;
         
         watcherCount++;
+
+        $('#numWatchers').text(watcherCount);
     });
 
     socket.on('watcherLeaveResponse', (response) => {
@@ -126,6 +128,8 @@ function initSocket() {
         if (!data) return;
 
         watcherCount--;
+        
+        $('#numWatchers').text(watcherCount);
     });
 }
 
