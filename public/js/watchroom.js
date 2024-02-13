@@ -1,16 +1,16 @@
-let socket;
-let player;
-let state;
-let playbackRate;
-let roomCode;
-let videoID;
-let numWatchers;
+let socket,
+    player,
+    state,
+    playbackRate,
+    roomCode,
+    videoID,
+    numWatchers;
 
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '390',
         width: '640',
-        videoId: 'RqooLet7B2Q',
+        videoId: '',
         playerVars: {
             'playsinline': 1,
             'autoplay': 0 // DOES NOT WORK ON BRAVE
@@ -62,6 +62,26 @@ function onPlayerStateChange(event) {
     }
 }
 
+function loadVideoById(newVideoID) {
+    videoID = newVideoID;
+    player.loadVideoById(videoID, 5, 'large'); // what do these arguments mean?
+}
+
+function setNumWatchers(newValue) {
+    numWatchers = newValue;
+    document.getElementById('numWatchers').textContent = newValue;
+}
+
+function playVideo() {
+    state = YT.PlayerState.PLAYING;
+    player.playVideo();
+}
+
+function pauseVideo() {
+    state = YT.PlayerState.PAUSED;
+    player.pauseVideo();
+}
+
 function getVideoIDFromURL(url) {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*\/|.*v=|.*vi=))([^&?]+)/);
     return (match && match[1]) ? match[1] : null;
@@ -74,14 +94,33 @@ function copyURLToClipboard() {
 function initSocket() {
     socket = io();
 
+    socket.on('getWatchRoomDataResponse', (response) => {
+        const data = validateResponse(response);
+        if (!data) return;
+
+        if (videoID !== data.videoID)
+            loadVideoById(data.videoID);
+
+        setNumWatchers(data.numWatchers);
+
+        if (player.getCurrentTime() !== data.timestamp)
+            player.seekTo(data.timestamp, true);
+
+        if (player.getPlaybackRate() !== data.playbackRate) {
+            playbackRate = data.playbackRate;
+            player.setPlaybackRate(playbackRate);
+        }
+
+        pauseVideo(); // ??? why doesn't this work?
+    });
+
     socket.on('loadVideoResponse', (response) => {
         const data = validateResponse(response);
         if (!data) return;
 
         if (videoID === data.videoID) return;
 
-        videoID = data.videoID;
-        player.loadVideoById(videoID, 5, 'large');
+        loadVideoById(data.videoID);
     });
 
     socket.on('playResponse', (response) => {
@@ -92,8 +131,7 @@ function initSocket() {
 
         player.seekTo(data.timestamp, true);
 
-        state = YT.PlayerState.PLAYING;
-        player.playVideo();
+        playVideo();
     });
 
     socket.on('pauseResponse', (response) => {
@@ -104,8 +142,7 @@ function initSocket() {
 
         player.seekTo(data.timestamp, true);
 
-        state = YT.PlayerState.PAUSED;
-        player.pauseVideo();
+        pauseVideo();
     });
 
     socket.on('playbackRateResponse', (response) => {
@@ -122,18 +159,16 @@ function initSocket() {
         const data = validateResponse(response);
         if (!data) return;
 
-        numWatchers = data.numWatchers;
+        setNumWatchers(data.numWatchers);
 
-        document.getElementById('numWatchers').textContent = numWatchers;
+        player.pauseVideo();
     });
 
     socket.on('watcherLeaveResponse', (response) => {
         const data = validateResponse(response);
         if (!data) return;
 
-        numWatchers = data.numWatchers;
-
-        document.getElementById('numWatchers').textContent = numWatchers;
+        setNumWatchers(data.numWatchers);
     });
 }
 
@@ -144,23 +179,22 @@ function initHTML() {
     scriptElement.src = scriptUrl;
     document.body.appendChild(scriptElement);
 
-    document.getElementById('videoLinkInput').addEventListener('submit', function(event) {
+    document.getElementById('videoLinkInput').addEventListener('submit', function (event) {
         event.preventDefault();
-        
+
         const inputValue = document.getElementById('videoLink').value;
         const retVal = getVideoIDFromURL(inputValue);
         const vID = retVal ? retVal : inputValue;
-    
-        player.loadVideoById(vID, 5, 'large');
-        videoID = vID;
-    
+
+        loadVideoById(vID);
+
         socket.emit('loadVideo', {
             roomCode: roomCode,
             videoID: vID
         });
     });
 
-    window.addEventListener('beforeunload', function(event) {
+    window.addEventListener('beforeunload', function (event) {
         socket.emit('watcherLeave', {
             roomCode: roomCode
         });
@@ -181,13 +215,25 @@ function validateResponse(response) {
 
 document.addEventListener('DOMContentLoaded', function () {
     roomCode = getRoomCode();
-    numWatchers = 0;
+    setNumWatchers(0);
 
     initSocket();
-
-    socket.emit('watcherJoin', {
-        roomCode: roomCode
-    });
-
     initHTML();
+
+    function checkPlayer() {
+        if (!player) {
+            setTimeout(checkPlayer, 500);
+            return;
+        }
+
+        socket.emit('watcherJoin', {
+            roomCode: roomCode
+        });
+
+        socket.emit('getWatchRoomData', {
+            roomCode: roomCode
+        });
+    }
+
+    checkPlayer();
 });

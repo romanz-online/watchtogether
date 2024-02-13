@@ -30,6 +30,7 @@ const pool = new Pool(dbConfig);
 pool.connect() // testing connection
     .then(() => {
         console.log('Connected to the database');
+        console.log('SIMULATOR mode is off');
     })
     .catch(err => {
         console.error('Error connecting to the database:', err);
@@ -96,6 +97,10 @@ io.on(SIGNALS.CONNECTION, (socket) => {
     socket.on(SIGNALS.CREATE_WATCH_ROOM, () => {
         createWatchRoom(socket);
     });
+
+    socket.on(SIGNALS.GET_WATCH_ROOM_DATA, (data) => {
+        getWatchRoomData(socket, data.roomCode);
+    });
 });
 
 async function createWatchRoom(socket) {
@@ -121,6 +126,37 @@ async function createWatchRoom(socket) {
 
         socketEmit(socket, responseSignal, true, {
             roomCode: newRoomCode
+        });
+    } catch (err) {
+        console.error(err);
+        socketEmit(socket, responseSignal, false, {});
+    }
+}
+
+async function getWatchRoomData(socket, roomCode) {
+    const responseSignal = SIGNALS.GET_WATCH_ROOM_DATA;
+    console.log(arguments.callee.name);
+
+    try {
+        if (SIMULATOR) {
+            socketEmit(socket, responseSignal, true, {
+                roomCode: roomCode,
+                videoID: 'Rz9Hokt6Jx4',
+                numWatchers: 1,
+                timestamp: 0.00,
+                playbackRate: 1
+            });
+            return;
+        }
+
+        const record = await getRowFromRoomCode(roomCode);
+
+        socketEmit(socket, responseSignal, true, {
+            roomCode: roomCode,
+            videoID: record[WATCH_ROOM_KEYS.VIDEO_ID],
+            numWatchers: record[WATCH_ROOM_KEYS.NUM_WATCHERS],
+            timestamp: record[WATCH_ROOM_KEYS.TIMESTAMP],
+            playbackRate: record[WATCH_ROOM_KEYS.PLAYBACK_RATE]
         });
     } catch (err) {
         console.error(err);
@@ -239,7 +275,7 @@ async function loadVideo(socket, roomCode, videoID) {
 
         const query = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
-            `SET ${WATCH_ROOM_KEYS.VIDEO_ID}=${videoID}`,
+            `SET ${WATCH_ROOM_KEYS.VIDEO_ID}='${videoID}'`,
             `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
         ];
         const result = await executeQuery(query);
@@ -352,8 +388,9 @@ async function deleteEmptyRecords() {
         for (const roomCode in emptyRooms) {
             if (!emptyRooms.hasOwnProperty(roomCode)) continue;
 
+            // replace with COUNT(*) later
             const query = [
-                `SELECT 1 FROM ${WATCH_ROOM_TABLE}`,
+                `SELECT * FROM ${WATCH_ROOM_TABLE}`,
                 `WHERE ${WATCH_ROOM_KEYS.EMPTY_SINCE}<=NOW() - INTERVAL '5 minutes'`,
                 `AND ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
             ];
@@ -379,7 +416,7 @@ async function deleteEmptyRecords() {
         if (roomsToDelete.length === 0) {
             console.log('no rooms to delete');
         }
-        
+
         for (const roomCode of roomsToDelete) {
             delete emptyRooms[roomCode];
         }
@@ -447,7 +484,7 @@ async function getRowFromRoomCode(roomCode) {
 
     try {
         const query = [
-            `SELECT 1 FROM ${WATCH_ROOM_TABLE}`,
+            `SELECT * FROM ${WATCH_ROOM_TABLE}`,
             `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
         ];
         const result = await executeQuery(query);
