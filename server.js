@@ -50,7 +50,7 @@ const {
 let connectedClients = {};
 let emptyRooms = {};
 
-cron.schedule('* * * * *', () => { deleteOldRecords(); });
+cron.schedule('* * * * *', () => { deleteEmptyRecords(); }); // every 1 minute
 
 const asURL = (f) => `${__dirname}/public/${f}`;
 
@@ -344,7 +344,7 @@ async function playbackRate(socket, roomCode, playbackRate) {
     }
 }
 
-async function deleteOldRecords() {
+async function deleteEmptyRecords() {
     console.log(arguments.callee.name);
 
     try {
@@ -387,10 +387,6 @@ async function deleteOldRecords() {
         console.error(err);
     }
 }
-
-
-
-
 
 
 
