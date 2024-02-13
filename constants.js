@@ -32,8 +32,8 @@ module.exports = {
 //     room_code VARCHAR(10) UNIQUE NOT NULL,
 //     video_id VARCHAR(50) DEFAULT '',
 //     num_watchers INTEGER DEFAULT 0,
-//     timestamp DOUBLE DEFAULT 0.0,
-//     playback_rate DOUBLE DEFAULT 1.0,
+//     timestamp DOUBLE PRECISION DEFAULT 0.0,
+//     playback_rate DOUBLE PRECISION DEFAULT 1.0,
 //     empty_since TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 // );
 
@@ -41,5 +41,5 @@ module.exports = {
 //     id SERIAL PRIMARY KEY,
 //     socket_id VARCHAR(50) NOT NULL,
 //     room_code VARCHAR(10) NOT NULL,
-//     FOREIGN KEY (room_id) REFERENCES WatchRoom(id)
+//     FOREIGN KEY (room_code) REFERENCES WatchRoom(room_code)
 // );

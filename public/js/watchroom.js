@@ -4,7 +4,7 @@ let state;
 let playbackRate;
 let roomCode;
 let videoID;
-let watcherCount;
+let numWatchers;
 
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
@@ -35,7 +35,7 @@ function onPlaybackRateChange(event) {
     playbackRate = player.getPlaybackRate();
 
     socket.emit('playbackRate', {
-        code: code,
+        roomCode: roomCode,
         playbackRate: playbackRate
     });
 }
@@ -46,7 +46,7 @@ function onPlayerStateChange(event) {
 
         state = YT.PlayerState.PLAYING;
         socket.emit('play', {
-            code: code,
+            roomCode: roomCode,
             timestamp: player.getCurrentTime()
         });
     }
@@ -56,7 +56,7 @@ function onPlayerStateChange(event) {
 
         state = YT.PlayerState.PAUSED;
         socket.emit('pause', {
-            code: code,
+            roomCode: roomCode,
             timestamp: player.getCurrentTime()
         });
     }
@@ -118,18 +118,18 @@ function initSocket() {
         const data = validateResponse(response);
         if (!data) return;
         
-        watcherCount++;
+        numWatchers = data.numWatchers;
 
-        $('#numWatchers').text(watcherCount);
+        $('#numWatchers').text(numWatchers);
     });
 
     socket.on('watcherLeaveResponse', (response) => {
         const data = validateResponse(response);
         if (!data) return;
 
-        watcherCount--;
+        numWatchers = data.numWatchers;
         
-        $('#numWatchers').text(watcherCount);
+        $('#numWatchers').text(numWatchers);
     });
 }
 
@@ -147,7 +147,7 @@ function validateResponse(response) {
 
 $(document).ready(function () {
     roomCode = getRoomCode();
-    watcherCount = 0;
+    numWatchers = 0;
 
     initSocket();
 

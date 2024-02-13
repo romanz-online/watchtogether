@@ -9,6 +9,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/socket.io', express.static(__dirname + '/node_modules/socket.io/client-dist'));
 
+let SIMULATOR = false;
+
 const dbConfig = process.env.DATABASE_URL ? {
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
@@ -17,13 +19,23 @@ const dbConfig = process.env.DATABASE_URL ? {
 } : {
     user: 'postgres',
     host: 'localhost',
-    database: 'watch',
+    database: 'watchtogether',
+    // database: 'NONEXISTENT DATABASE',
     password: 'admin',
     port: 5432,
     connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 10000
 };
 const pool = new Pool(dbConfig);
+pool.connect() // testing connection
+    .then(() => {
+        console.log('Connected to the database');
+    })
+    .catch(err => {
+        console.error('Error connecting to the database:', err);
+        console.log('Enabling SIMULATOR mode');
+        SIMULATOR = true;
+    });
 
 const constants = require('./constants');
 const {
@@ -46,7 +58,6 @@ app.get('/watchroom', (req, res) => {
     console.log('/watchroom');
 
     const roomCode = req.query.roomCode;
-    console.log(roomCode);
 
     res.sendFile(asURL((roomCode && roomCode.length === 10) ? 'watchroom.html' : 'index.html'));
 });
@@ -91,12 +102,12 @@ async function createWatchRoom(socket) {
     console.log(arguments.callee.name);
 
     try {
-        const newCode = await generateRoomCode();
+        const newRoomCode = await generateRoomCode();
 
         const query = [
             `INSERT INTO ${WATCH_ROOM_TABLE}`,
             `(${WATCH_ROOM_KEYS.ROOM_CODE})`,
-            `VALUES ('${newCode}');`
+            `VALUES ('${newRoomCode}');`
         ];
         const result = await executeQuery(query);
 
@@ -121,17 +132,24 @@ async function watcherJoin(socket, roomCode) {
         ];
         const result = await executeQuery(query);
 
+        const usersList = await getUsersFromRoomCode(roomCode);
+        const newNumWatchers = usersList.length;
+
         const query1 = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
-            `SET ${WATCH_ROOM_KEYS.NUM_WATCHERS}=${WATCH_ROOM_KEYS.NUM_WATCHERS} + 1`,
-            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+            `SET ${WATCH_ROOM_KEYS.NUM_WATCHERS}=${newNumWatchers}`,
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
         ];
         const result1 = await executeQuery(query1);
 
-        if(emptyRooms[roomCode])
+        if (emptyRooms[roomCode])
             delete emptyRooms[roomCode];
 
-        emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_JOIN, {});
+        emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_JOIN,
+            {
+                roomCode: roomCode,
+                numWatchers: newNumWatchers
+            });
     } catch (err) {
         console.error(err);
         socketEmit(socket, SIGNALS.WATCHER_JOIN, false, {});
@@ -145,28 +163,35 @@ async function watcherLeave(socket, roomCode) {
         const query = [
             `DELETE FROM ${WATCH_ROOM_USER_TABLE}`,
             `WHERE ${WATCH_ROOM_USER_KEYS.ROOM_CODE}='${roomCode}'`,
-            `AND ${WATCH_ROOM_USER_KEYS.SOCKET_ID}='${socket.id}');`
+            `AND ${WATCH_ROOM_USER_KEYS.SOCKET_ID}='${socket.id}';`
         ];
         const result = await executeQuery(query);
 
+        const usersList = await getUsersFromRoomCode(roomCode);
+        const newNumWatchers = usersList.length;
+
         const query1 = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
-            `SET ${WATCH_ROOM_KEYS.NUM_WATCHERS}=${WATCH_ROOM_KEYS.NUM_WATCHERS} - 1`,
-            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+            `SET ${WATCH_ROOM_KEYS.NUM_WATCHERS}=${newNumWatchers}`,
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
         ];
         const result1 = await executeQuery(query1);
 
-        let notifiedCount = emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_LEAVE, { roomCode: data.roomCode });
-
-        if (notifiedCount === 0) {
-            const query1 = [
+        if (newNumWatchers === 0) {
+            const query2 = [
                 `UPDATE ${WATCH_ROOM_TABLE}`,
                 `SET ${WATCH_ROOM_KEYS.EMPTY_SINCE}=NOW()`,
-                `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+                `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
             ];
-            const result1 = await executeQuery(query1);
+            const result2 = await executeQuery(query2);
 
             emptyRooms[roomCode] = true; // "true" doesn't actually mean anything, it's just a truthy value
+        } else {
+            emitToRoomWatchers(socket, roomCode, SIGNALS.WATCHER_LEAVE,
+                {
+                    roomCode: roomCode,
+                    numWatchers: newNumWatchers
+                });
         }
     } catch (err) {
         console.error(err);
@@ -181,13 +206,13 @@ async function loadVideo(socket, roomCode, videoID) {
         const query = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
             `SET ${WATCH_ROOM_KEYS.VIDEO_ID}=${videoID}`,
-            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
         ];
         const result = await executeQuery(query);
 
-        emitToRoomWatchers(socket, data.roomCode, SIGNALS.LOAD_VIDEO, {
-            roomCode: data.roomCode,
-            videoID: data.videoID
+        emitToRoomWatchers(socket, roomCode, SIGNALS.LOAD_VIDEO, {
+            roomCode: roomCode,
+            videoID: videoID
         });
     } catch (err) {
         console.error(err);
@@ -202,13 +227,13 @@ async function play(socket, roomCode, timestamp) {
         const query = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
             `SET ${WATCH_ROOM_KEYS.TIMESTAMP}=${timestamp}`,
-            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
         ];
         const result = await executeQuery(query);
 
-        emitToRoomWatchers(socket, data.roomCode, SIGNALS.PLAY, {
-            roomCode: data.roomCode,
-            timestamp: data.timestamp
+        emitToRoomWatchers(socket, roomCode, SIGNALS.PLAY, {
+            roomCode: roomCode,
+            timestamp: timestamp
         });
     } catch (err) {
         console.error(err);
@@ -223,13 +248,13 @@ async function pause(socket, roomCode, timestamp) {
         const query = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
             `SET ${WATCH_ROOM_KEYS.TIMESTAMP}=${timestamp}`,
-            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
         ];
         const result = await executeQuery(query);
 
-        emitToRoomWatchers(socket, data.roomCode, SIGNALS.PAUSE, {
-            roomCode: data.roomCode,
-            timestamp: data.timestamp
+        emitToRoomWatchers(socket, roomCode, SIGNALS.PAUSE, {
+            roomCode: roomCode,
+            timestamp: timestamp
         });
     } catch (err) {
         console.error(err);
@@ -244,13 +269,13 @@ async function playbackRate(socket, roomCode, playbackRate) {
         const query = [
             `UPDATE ${WATCH_ROOM_TABLE}`,
             `SET ${WATCH_ROOM_KEYS.PLAYBACK_RATE}=${playbackRate}`,
-            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}');`
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
         ];
         const result = await executeQuery(query);
 
-        emitToRoomWatchers(socket, data.roomCode, SIGNALS.PLAYBACK_RATE, {
-            roomCode: data.roomCode,
-            playbackRate: data.playbackRate
+        emitToRoomWatchers(socket, roomCode, SIGNALS.PLAYBACK_RATE, {
+            roomCode: roomCode,
+            playbackRate: playbackRate
         });
     } catch (err) {
         console.error(err);
@@ -259,7 +284,7 @@ async function playbackRate(socket, roomCode, playbackRate) {
 }
 
 async function deleteOldRecords() {
-    console.log(arguments.callee.name);
+    // console.log(arguments.callee.name);
 
     try {
         // delete every room that's in emptyRooms and which passes the query with `NOW() - INTERVAL '5 minutes'`
@@ -283,16 +308,13 @@ async function emitToRoomWatchers(socket, roomCode, signal, data) {
     console.log(arguments.callee.name);
 
     try {
-        let count = 0;
         const result = await getUsersFromRoomCode(roomCode);
         for (const row of result) {
             const socket_id = row[WATCH_ROOM_USER_KEYS.SOCKET_ID];
-            if (socket_id !== socket.id) {
+            if (/*socket_id !== socket.id &&*/ connectedClients[socket_id]) {
                 socketEmit(connectedClients[socket_id], signal, true, data);
-                count++;
             }
         }
-        return count;
     } catch (err) {
         console.error(err);
         throw err;
@@ -368,6 +390,7 @@ async function getUsersFromRoomCode(roomCode) {
 
 async function executeQuery(query) {
     const queryString = query.join(' ');
+    console.log(queryString);
     const client = await pool.connect();
     const { rows } = await client.query(queryString);
     client.release();
