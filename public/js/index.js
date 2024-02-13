@@ -4,8 +4,8 @@ document.addEventListener('DOMContentLoaded', function () {
     socket = io();
 
     socket.on('createWatchRoomResponse', (response) => {
-        const { success, signature, data } = response;
-        console.log(success ? 'SUCCESS' : 'FAIL', signature);
+        const { success, signal, data } = response;
+        console.log(success ? 'SUCCESS' : 'FAIL', signal);
 
         if (success) {
             window.location.href = `/watchroom?roomCode=${data.roomCode}`;
