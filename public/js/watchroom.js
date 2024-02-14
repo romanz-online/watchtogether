@@ -8,7 +8,6 @@ let socket,
     playerReady = false;
 
 function onYouTubeIframeAPIReady() {
-    console.log('onYouTubeIframeAPIReady');
     player = new YT.Player('player', {
         height: '390',
         width: '640',
@@ -26,7 +25,6 @@ function onYouTubeIframeAPIReady() {
 }
 
 function onPlayerReady(event) {
-    console.log('onPlayerReady');
     playerReady = true;
     state = player.getPlayerState();
     playbackRate = player.getPlaybackRate();
@@ -230,22 +228,21 @@ document.addEventListener('DOMContentLoaded', function () {
     initSocket();
     initHTML();
 
+    // async spinning until the player is ready
+    // then we can request information from server about the video
     function checkPlayer() {
         if (!playerReady) {
             setTimeout(checkPlayer, 500);
             return;
         }
-        console.log('checkPlayer');
 
-        // setTimeout(function () {
-            socket.emit('watcherJoin', {
-                roomCode: roomCode
-            });
+        socket.emit('watcherJoin', {
+            roomCode: roomCode
+        });
 
-            socket.emit('getWatchRoomData', {
-                roomCode: roomCode
-            });
-        // }, 1 * 1000);
+        socket.emit('getWatchRoomData', {
+            roomCode: roomCode
+        });
     }
 
     checkPlayer();
