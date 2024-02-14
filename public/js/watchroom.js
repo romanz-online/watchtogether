@@ -88,6 +88,11 @@ function seekTo(timestamp) {
     player.seekTo(timestamp, true);
 }
 
+function setPlaybackRate(newPlaybackRate) {
+    playbackRate = newPlaybackRate;
+    player.setPlaybackRate(playbackRate);
+}
+
 function getVideoIDFromURL(url) {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*\/|.*v=|.*vi=))([^&?]+)/);
     return (match && match[1]) ? match[1] : null;
@@ -102,7 +107,10 @@ function initSocket() {
 
     socket.on('getWatchRoomDataResponse', (response) => {
         const data = validateResponse(response);
-        if (!data) return;
+        if (!data) {
+            window.location.href = '/';
+            return;
+        }
 
         console.log(videoID);
         console.log(data.videoID);
@@ -114,10 +122,8 @@ function initSocket() {
         if (player.getCurrentTime() !== data.timestamp)
             seekTo(data.timestamp);
 
-        if (player.getPlaybackRate() !== data.playbackRate) {
-            playbackRate = data.playbackRate;
-            player.setPlaybackRate(playbackRate);
-        }
+        if (player.getPlaybackRate() !== data.playbackRate)
+            setPlaybackRate(data.playbackRate);
 
         pauseVideo(); // ??? why doesn't this work?
     });
@@ -159,8 +165,7 @@ function initSocket() {
 
         if (playbackRate === data.playbackRate) return;
 
-        playbackRate = data.playbackRate;
-        player.setPlaybackRate(playbackRate);
+        setPlaybackRate(data.playbackRate);
     });
 
     socket.on('watcherJoinResponse', (response) => {
@@ -169,7 +174,7 @@ function initSocket() {
 
         setNumWatchers(data.numWatchers);
 
-        player.pauseVideo();
+        pauseVideo();
     });
 
     socket.on('watcherLeaveResponse', (response) => {

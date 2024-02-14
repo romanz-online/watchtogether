@@ -383,20 +383,21 @@ async function playbackRate(socket, roomCode, playbackRate) {
 async function deleteEmptyRecords() {
     console.log(arguments.callee.name);
 
+    if(SIMULATOR) return;
+
     try {
         let roomsToDelete = [];
         for (const roomCode in emptyRooms) {
             if (!emptyRooms.hasOwnProperty(roomCode)) continue;
 
-            // replace with COUNT(*) later
             const query = [
-                `SELECT * FROM ${WATCH_ROOM_TABLE}`,
+                `SELECT COUNT(*) FROM ${WATCH_ROOM_TABLE}`,
                 `WHERE ${WATCH_ROOM_KEYS.EMPTY_SINCE}<=NOW() - INTERVAL '5 minutes'`,
                 `AND ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
             ];
             const result = await executeQuery(query);
 
-            if (result.length === 0) continue;
+            if (result[0].count === 0) continue;
 
             const query1 = [
                 `DELETE FROM ${WATCH_ROOM_USER_TABLE}`,
