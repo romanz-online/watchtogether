@@ -430,7 +430,7 @@ async function deleteEmptyRecords() {
 // HELPER METHODS
 
 async function emitToRoomWatchers(socket, roomCode, signal, data) {
-    console.log(arguments.callee.name);
+    console.log('\t', arguments.callee.name);
 
     try {
         const result = await getUsersFromRoomCode(roomCode);
@@ -455,7 +455,7 @@ function socketEmit(socket, signal, success, data) {
 }
 
 async function generateRoomCode() {
-    console.log(arguments.callee.name);
+    console.log('\t', arguments.callee.name);
 
     try {
         while (true) {
@@ -471,7 +471,7 @@ async function generateRoomCode() {
             if (!record.rows)
                 return roomCode;
 
-            console.log(`roomCode ${roomCode} was not unique. Trying again...`);
+            console.log('\t', `roomCode ${roomCode} was not unique. Trying again...`);
         }
     } catch (err) {
         console.error(err);
@@ -480,7 +480,7 @@ async function generateRoomCode() {
 }
 
 async function getRowFromRoomCode(roomCode) {
-    console.log(arguments.callee.name);
+    console.log('\t', arguments.callee.name);
 
     try {
         const query = [
@@ -497,7 +497,7 @@ async function getRowFromRoomCode(roomCode) {
 }
 
 async function getUsersFromRoomCode(roomCode) {
-    console.log(arguments.callee.name);
+    console.log('\t', arguments.callee.name);
 
     try {
         const query = [
@@ -515,7 +515,8 @@ async function getUsersFromRoomCode(roomCode) {
 
 async function executeQuery(query) {
     const queryString = query.join(' ');
-    console.log(queryString);
+    console.log('\t', queryString);
+    
     const client = await pool.connect();
     const { rows } = await client.query(queryString);
     client.release();

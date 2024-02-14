@@ -4,9 +4,11 @@ let socket,
     playbackRate,
     roomCode,
     videoID,
-    numWatchers;
+    numWatchers,
+    playerReady = false;
 
 function onYouTubeIframeAPIReady() {
+    console.log('onYouTubeIframeAPIReady');
     player = new YT.Player('player', {
         height: '390',
         width: '640',
@@ -24,6 +26,8 @@ function onYouTubeIframeAPIReady() {
 }
 
 function onPlayerReady(event) {
+    console.log('onPlayerReady');
+    playerReady = true;
     state = player.getPlayerState();
     playbackRate = player.getPlaybackRate();
     videoID = getVideoIDFromURL(player.getVideoUrl());
@@ -82,6 +86,10 @@ function pauseVideo() {
     player.pauseVideo();
 }
 
+function seekTo(timestamp) {
+    player.seekTo(timestamp, true);
+}
+
 function getVideoIDFromURL(url) {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*\/|.*v=|.*vi=))([^&?]+)/);
     return (match && match[1]) ? match[1] : null;
@@ -98,13 +106,15 @@ function initSocket() {
         const data = validateResponse(response);
         if (!data) return;
 
-        if (videoID !== data.videoID)
+        console.log(videoID);
+        console.log(data.videoID);
+        if (videoID !== data.videoID || videoID === null || videoID === undefined)
             loadVideoById(data.videoID);
 
         setNumWatchers(data.numWatchers);
 
         if (player.getCurrentTime() !== data.timestamp)
-            player.seekTo(data.timestamp, true);
+            seekTo(data.timestamp);
 
         if (player.getPlaybackRate() !== data.playbackRate) {
             playbackRate = data.playbackRate;
@@ -129,7 +139,7 @@ function initSocket() {
 
         if (state === YT.PlayerState.PLAYING) return;
 
-        player.seekTo(data.timestamp, true);
+        seekTo(data.timestamp);
 
         playVideo();
     });
@@ -140,7 +150,7 @@ function initSocket() {
 
         if (state === YT.PlayerState.PAUSED) return;
 
-        player.seekTo(data.timestamp, true);
+        seekTo(data.timestamp);
 
         pauseVideo();
     });
@@ -221,18 +231,21 @@ document.addEventListener('DOMContentLoaded', function () {
     initHTML();
 
     function checkPlayer() {
-        if (!player) {
+        if (!playerReady) {
             setTimeout(checkPlayer, 500);
             return;
         }
+        console.log('checkPlayer');
 
-        socket.emit('watcherJoin', {
-            roomCode: roomCode
-        });
+        // setTimeout(function () {
+            socket.emit('watcherJoin', {
+                roomCode: roomCode
+            });
 
-        socket.emit('getWatchRoomData', {
-            roomCode: roomCode
-        });
+            socket.emit('getWatchRoomData', {
+                roomCode: roomCode
+            });
+        // }, 1 * 1000);
     }
 
     checkPlayer();
