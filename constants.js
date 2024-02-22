@@ -23,8 +23,10 @@ module.exports = {
         PLAY: 'play',
         PAUSE: 'pause',
         PLAYBACK_RATE: 'playbackRate',
+        SYNC_TIMESTAMP: 'syncTimestamp',
         CREATE_WATCH_ROOM: 'createWatchRoom',
-        GET_WATCH_ROOM_DATA: 'getWatchRoomData'
+        GET_WATCH_ROOM_DATA: 'getWatchRoomData',
+        DRAW: 'draw'
     }
 };
 

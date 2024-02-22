@@ -94,12 +94,20 @@ io.on(SIGNALS.CONNECTION, (socket) => {
         playbackRate(socket, data.roomCode, data.playbackRate);
     });
 
+    socket.on(SIGNALS.SYNC_TIMESTAMP, (data) => {
+        syncTimestamp(socket, data.roomCode, data.timestamp);
+    });
+
     socket.on(SIGNALS.CREATE_WATCH_ROOM, () => {
         createWatchRoom(socket);
     });
 
     socket.on(SIGNALS.GET_WATCH_ROOM_DATA, (data) => {
         getWatchRoomData(socket, data.roomCode);
+    });
+    
+    socket.on(SIGNALS.DRAW, (data) => {
+        draw(socket, data.roomCode, data.x, data.y, data.color, data.lineWidth);
     });
 });
 
@@ -254,6 +262,64 @@ async function watcherLeave(socket, roomCode) {
                     numWatchers: newNumWatchers
                 });
         }
+    } catch (err) {
+        console.error(err);
+        socketEmit(socket, responseSignal, false, {});
+    }
+}
+
+async function draw(socket, roomCode, x, y, color, lineWidth) {
+    const responseSignal = SIGNALS.DRAW;
+    console.log(arguments.callee.name);
+
+    try {
+        if (SIMULATOR) {
+            // socketEmit(socket, responseSignal, true, {
+            //     roomCode: '1234567890',
+            //     timestamp: timestamp
+            // });
+            return;
+        }
+
+        // const query = [
+        //     `UPDATE ${WATCH_ROOM_TABLE}`,
+        //     `SET ${WATCH_ROOM_KEYS.TIMESTAMP}=${timestamp}`,
+        //     `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
+        // ];
+        // const result = await executeQuery(query);
+
+        emitToRoomWatchers(socket, roomCode, responseSignal, {
+            roomCode: roomCode,
+            x: x,
+            y: y,
+            color: color,
+            lineWidth: lineWidth
+        });
+    } catch (err) {
+        console.error(err);
+        socketEmit(socket, responseSignal, false, {});
+    }
+}
+
+async function syncTimestamp(socket, roomCode, timestamp) {
+    const responseSignal = SIGNALS.SYNC_TIMESTAMP;
+    console.log(arguments.callee.name);
+
+    try {
+        if (SIMULATOR) {
+            socketEmit(socket, responseSignal, true, {
+                roomCode: roomCode,
+                timestamp: timestamp
+            });
+            return;
+        }
+
+        const record = await getRowFromRoomCode(roomCode);
+
+        socketEmit(socket, responseSignal, true, {
+            roomCode: roomCode,
+            timestamp: null // fill in
+        });
     } catch (err) {
         console.error(err);
         socketEmit(socket, responseSignal, false, {});

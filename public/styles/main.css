@@ -8,3 +8,7 @@
 #video-player {
     max-width: 100%;
 }
+
+canvas {
+    border: 1px solid #000;
+}

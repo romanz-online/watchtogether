@@ -7,19 +7,43 @@ let socket,
     numWatchers,
     playerReady = false;
 
+let isDrawing = false,
+    canvas,
+    context;
+
+class Timer {
+    constructor(callback) {
+        this.timerInterval = null;
+        this.callback = callback;
+    }
+
+    start() {
+        this.timerInterval = setInterval(() => {
+            this.callback();
+        }, 1 * 1000);
+    }
+
+    stop() {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+    }
+}
+
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '390',
         width: '640',
         videoId: '',
         playerVars: {
+            // 'videoId': 'KBh7kcSwxbg',
             'playsinline': 1,
             'autoplay': 0 // DOES NOT WORK ON BRAVE
         },
         events: {
             'onReady': onPlayerReady,
             'onStateChange': onPlayerStateChange,
-            'onPlaybackRateChange': onPlaybackRateChange
+            'onPlaybackRateChange': onPlaybackRateChange,
+            'onAutoplayBlocked': pauseVideo // test
         }
     });
 }
@@ -32,9 +56,9 @@ function onPlayerReady(event) {
 }
 
 function onPlaybackRateChange(event) {
-    if (playbackRate === player.getPlaybackRate()) return;
+    if (playbackRate === event.data) return;
 
-    playbackRate = player.getPlaybackRate();
+    playbackRate = event.data;
 
     socket.emit('playbackRate', {
         roomCode: roomCode,
@@ -93,6 +117,13 @@ function setPlaybackRate(newPlaybackRate) {
     player.setPlaybackRate(playbackRate);
 }
 
+function checkSync() {
+    socket.emit('syncTimestamp', {
+        roomCode: roomCode,
+        timestamp: player.getCurrentTime()
+    });
+}
+
 function getVideoIDFromURL(url) {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*\/|.*v=|.*vi=))([^&?]+)/);
     return (match && match[1]) ? match[1] : null;
@@ -112,8 +143,6 @@ function initSocket() {
             return;
         }
 
-        console.log(videoID);
-        console.log(data.videoID);
         if (videoID !== data.videoID || videoID === null || videoID === undefined)
             loadVideoById(data.videoID);
 
@@ -126,6 +155,16 @@ function initSocket() {
             setPlaybackRate(data.playbackRate);
 
         pauseVideo(); // ??? why doesn't this work?
+    });
+
+    socket.on('drawResponse', (response) => {
+        const data = validateResponse(response);
+        if (!data) return;
+
+        context.strokeStyle = data.color;
+        context.lineWidth = data.lineWidth;
+        context.lineTo(data.x, data.y);
+        context.stroke();
     });
 
     socket.on('loadVideoResponse', (response) => {
@@ -212,6 +251,47 @@ function initHTML() {
             roomCode: roomCode
         });
     });
+
+    // CANVAS
+    canvas = document.getElementById('canvas');
+    context = canvas.getContext('2d');
+    context.lineWidth = 2;
+    context.strokeStyle = '#000';
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+}
+
+function startDrawing(event) {
+    isDrawing = true;
+    draw(event);
+}
+
+function draw(event) {
+    if (!isDrawing) return;
+
+    const x = event.offsetX;
+    const y = event.offsetY;
+
+    context.lineTo(x, y);
+    context.stroke();
+    socket.emit('draw', {
+        roomCode: roomCode,
+        x: x,
+        y: y,
+        color: context.strokeStyle,
+        lineWidth: context.lineWidth
+    });
+}
+
+function stopDrawing() {
+    isDrawing = false;
+    context.beginPath();
+}
+
+function getCurrentDomain() {
+    return window.location.hostname.split('.').slice(-2).join('.');
 }
 
 function getRoomCode() {
@@ -248,6 +328,8 @@ document.addEventListener('DOMContentLoaded', function () {
         socket.emit('getWatchRoomData', {
             roomCode: roomCode
         });
+
+        // const playSyncTimer = new Timer(checkSync);
     }
 
     checkPlayer();
