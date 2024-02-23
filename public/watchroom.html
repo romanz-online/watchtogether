@@ -12,13 +12,16 @@
 </head>
 
 <body>
-    <div id="player"></div>
+    <div id="container">
+        <div id="player"></div>
+        <canvas id="canvas" width="640" height="360"></canvas>
+    </div>
     <form id="videoLinkInput">
         <input type="text" id="videoLink">
         <button type="submit">Submit</button>
     </form>
     <div id="numWatchers">0</div>
-    <canvas id="canvas"></canvas>
+    <button id="drawButton">Draw</button>
 </body>
 
 </html>

@@ -5,11 +5,15 @@ let socket,
     roomCode,
     videoID,
     numWatchers,
-    playerReady = false;
+    playerReady = false,
+    playerElement;
 
 let isDrawing = false,
-    canvas,
-    context;
+    canvasElement,
+    context,
+    lastX,
+    lastY,
+    drawingEnabled = false;
 
 class Timer {
     constructor(callback) {
@@ -31,11 +35,11 @@ class Timer {
 
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
-        height: '390',
-        width: '640',
+        height: '480',
+        width: '854',
         videoId: '',
         playerVars: {
-            // 'videoId': 'KBh7kcSwxbg',
+            'videoId': 'KBh7kcSwxbg',
             'playsinline': 1,
             'autoplay': 0 // DOES NOT WORK ON BRAVE
         },
@@ -163,6 +167,8 @@ function initSocket() {
 
         context.strokeStyle = data.color;
         context.lineWidth = data.lineWidth;
+        context.beginPath();
+        context.moveTo(data.lastX, data.lastY);
         context.lineTo(data.x, data.y);
         context.stroke();
     });
@@ -252,19 +258,36 @@ function initHTML() {
         });
     });
 
-    // CANVAS
-    canvas = document.getElementById('canvas');
-    context = canvas.getContext('2d');
+    // canvasElement
+    canvasElement = document.getElementById('canvas');
+    context = canvasElement.getContext('2d');
     context.lineWidth = 2;
-    context.strokeStyle = '#000';
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
+    context.strokeStyle = 'red';
+    canvasElement.addEventListener('mousedown', startDrawing);
+    canvasElement.addEventListener('mousemove', draw);
+    canvasElement.addEventListener('mouseup', stopDrawing);
+    canvasElement.addEventListener('mouseout', stopDrawing);
+
+    document.getElementById('drawButton').onclick = function () {
+        if (drawingEnabled) {
+            console.log('disable drawing');
+            drawingEnabled = false;
+            canvasElement.style.pointerEvents = 'none';
+            playerElement.style.pointerEvents = 'auto';
+        } else {
+            console.log('enable drawing');
+            drawingEnabled = true;
+            canvasElement.style.pointerEvents = 'auto';
+            playerElement.style.pointerEvents = 'none';
+        }
+    };
 }
 
 function startDrawing(event) {
+    if (!drawingEnabled) return;
     isDrawing = true;
+    lastX = event.offsetX;
+    lastY = event.offsetY;
     draw(event);
 }
 
@@ -280,9 +303,14 @@ function draw(event) {
         roomCode: roomCode,
         x: x,
         y: y,
+        lastX: lastX,
+        lastY: lastY,
         color: context.strokeStyle,
         lineWidth: context.lineWidth
     });
+
+    lastX = x;
+    lastY = y;
 }
 
 function stopDrawing() {
@@ -320,6 +348,8 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(checkPlayer, 500);
             return;
         }
+
+        playerElement = document.getElementById('player');
 
         socket.emit('watcherJoin', {
             roomCode: roomCode

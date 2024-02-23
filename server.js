@@ -51,6 +51,19 @@ const {
 let connectedClients = {};
 let emptyRooms = {};
 
+const eventMap = {
+    [SIGNALS.WATCHER_JOIN]: watcherJoin,
+    [SIGNALS.WATCHER_LEAVE]: watcherLeave,
+    [SIGNALS.LOAD_VIDEO]: loadVideo,
+    [SIGNALS.PLAY]: play,
+    [SIGNALS.PAUSE]: pause,
+    [SIGNALS.PLAYBACK_RATE]: playbackRate,
+    [SIGNALS.SYNC_TIMESTAMP]: syncTimestamp,
+    [SIGNALS.CREATE_WATCH_ROOM]: createWatchRoom,
+    [SIGNALS.GET_WATCH_ROOM_DATA]: getWatchRoomData,
+    [SIGNALS.DRAW]: draw
+};
+
 cron.schedule('* * * * *', () => { deleteEmptyRecords(); }); // every 1 minute
 
 const asURL = (f) => `${__dirname}/public/${f}`;
@@ -70,44 +83,8 @@ io.on(SIGNALS.CONNECTION, (socket) => {
         delete connectedClients[socket.id];
     });
 
-    socket.on(SIGNALS.WATCHER_JOIN, (data) => {
-        watcherJoin(socket, data.roomCode);
-    });
-
-    socket.on(SIGNALS.WATCHER_LEAVE, (data) => {
-        watcherLeave(socket, data.roomCode);
-    });
-
-    socket.on(SIGNALS.LOAD_VIDEO, (data) => {
-        loadVideo(socket, data.roomCode, data.videoID);
-    });
-
-    socket.on(SIGNALS.PLAY, (data) => {
-        play(socket, data.roomCode, data.timestamp);
-    });
-
-    socket.on(SIGNALS.PAUSE, (data) => {
-        pause(socket, data.roomCode, data.timestamp);
-    });
-
-    socket.on(SIGNALS.PLAYBACK_RATE, (data) => {
-        playbackRate(socket, data.roomCode, data.playbackRate);
-    });
-
-    socket.on(SIGNALS.SYNC_TIMESTAMP, (data) => {
-        syncTimestamp(socket, data.roomCode, data.timestamp);
-    });
-
-    socket.on(SIGNALS.CREATE_WATCH_ROOM, () => {
-        createWatchRoom(socket);
-    });
-
-    socket.on(SIGNALS.GET_WATCH_ROOM_DATA, (data) => {
-        getWatchRoomData(socket, data.roomCode);
-    });
-    
-    socket.on(SIGNALS.DRAW, (data) => {
-        draw(socket, data.roomCode, data.x, data.y, data.color, data.lineWidth);
+    Object.entries(eventMap).forEach(([signal, handler]) => {
+        socket.on(signal, data => handler(socket, data));
     });
 });
 
@@ -141,11 +118,13 @@ async function createWatchRoom(socket) {
     }
 }
 
-async function getWatchRoomData(socket, roomCode) {
+async function getWatchRoomData(socket, data) {
     const responseSignal = SIGNALS.GET_WATCH_ROOM_DATA;
     console.log(arguments.callee.name);
 
     try {
+        const { roomCode } = data;
+
         if (SIMULATOR) {
             socketEmit(socket, responseSignal, true, {
                 roomCode: roomCode,
@@ -172,11 +151,13 @@ async function getWatchRoomData(socket, roomCode) {
     }
 }
 
-async function watcherJoin(socket, roomCode) {
+async function watcherJoin(socket, data) {
     const responseSignal = SIGNALS.WATCHER_JOIN;
     console.log(arguments.callee.name);
 
     try {
+        const { roomCode } = data;
+
         if (SIMULATOR) {
             socketEmit(socket, responseSignal, true, {
                 roomCode: '1234567890',
@@ -205,22 +186,23 @@ async function watcherJoin(socket, roomCode) {
         if (emptyRooms[roomCode])
             delete emptyRooms[roomCode];
 
-        emitToRoomWatchers(socket, roomCode, responseSignal,
-            {
-                roomCode: roomCode,
-                numWatchers: newNumWatchers
-            });
+        emitToRoomWatchers(socket, roomCode, responseSignal, {
+            roomCode: roomCode,
+            numWatchers: newNumWatchers
+        });
     } catch (err) {
         console.error(err);
         socketEmit(socket, responseSignal, false, {});
     }
 }
 
-async function watcherLeave(socket, roomCode) {
+async function watcherLeave(socket, data) {
     const responseSignal = SIGNALS.WATCHER_LEAVE;
     console.log(arguments.callee.name);
 
     try {
+        const { roomCode } = data;
+
         if (SIMULATOR) {
             socketEmit(socket, responseSignal, true, {
                 roomCode: '1234567890',
@@ -268,7 +250,7 @@ async function watcherLeave(socket, roomCode) {
     }
 }
 
-async function draw(socket, roomCode, x, y, color, lineWidth) {
+async function draw(socket, data) {
     const responseSignal = SIGNALS.DRAW;
     console.log(arguments.callee.name);
 
@@ -288,28 +270,24 @@ async function draw(socket, roomCode, x, y, color, lineWidth) {
         // ];
         // const result = await executeQuery(query);
 
-        emitToRoomWatchers(socket, roomCode, responseSignal, {
-            roomCode: roomCode,
-            x: x,
-            y: y,
-            color: color,
-            lineWidth: lineWidth
-        });
+        emitToRoomWatchers(socket, data.roomCode, responseSignal, data);
     } catch (err) {
         console.error(err);
         socketEmit(socket, responseSignal, false, {});
     }
 }
 
-async function syncTimestamp(socket, roomCode, timestamp) {
+async function syncTimestamp(socket, data) {
     const responseSignal = SIGNALS.SYNC_TIMESTAMP;
     console.log(arguments.callee.name);
 
     try {
+        const { roomCode, timestamp } = data;
+
         if (SIMULATOR) {
             socketEmit(socket, responseSignal, true, {
-                roomCode: roomCode,
-                timestamp: timestamp
+                roomCode: data.roomCode,
+                timestamp: data.timestamp
             });
             return;
         }
@@ -326,15 +304,17 @@ async function syncTimestamp(socket, roomCode, timestamp) {
     }
 }
 
-async function loadVideo(socket, roomCode, videoID) {
+async function loadVideo(socket, data) {
     const responseSignal = SIGNALS.LOAD_VIDEO;
     console.log(arguments.callee.name);
 
     try {
+        const { roomCode, videoID } = data;
+
         if (SIMULATOR) {
             socketEmit(socket, responseSignal, true, {
                 roomCode: '1234567890',
-                videoID: videoID
+                videoID: data.videoID
             });
             return;
         }
@@ -356,11 +336,13 @@ async function loadVideo(socket, roomCode, videoID) {
     }
 }
 
-async function play(socket, roomCode, timestamp) {
+async function play(socket, data) {
     const responseSignal = SIGNALS.PLAY;
     console.log(arguments.callee.name);
 
     try {
+        const { roomCode, timestamp } = data;
+
         if (SIMULATOR) {
             socketEmit(socket, responseSignal, true, {
                 roomCode: '1234567890',
@@ -386,11 +368,13 @@ async function play(socket, roomCode, timestamp) {
     }
 }
 
-async function pause(socket, roomCode, timestamp) {
+async function pause(socket, data) {
     const responseSignal = SIGNALS.PAUSE;
     console.log(arguments.callee.name);
 
     try {
+        const { roomCode, timestamp } = data;
+
         if (SIMULATOR) {
             socketEmit(socket, responseSignal, true, {
                 roomCode: '1234567890',
@@ -416,11 +400,13 @@ async function pause(socket, roomCode, timestamp) {
     }
 }
 
-async function playbackRate(socket, roomCode, playbackRate) {
+async function playbackRate(socket, data) {
     const responseSignal = SIGNALS.PLAYBACK_RATE;
     console.log(arguments.callee.name);
 
     try {
+        const { roomCode, playbackRate } = data;
+
         if (SIMULATOR) {
             socketEmit(socket, responseSignal, true, {
                 roomCode: '1234567890',
@@ -449,7 +435,7 @@ async function playbackRate(socket, roomCode, playbackRate) {
 async function deleteEmptyRecords() {
     console.log(arguments.callee.name);
 
-    if(SIMULATOR) return;
+    if (SIMULATOR) return;
 
     try {
         let roomsToDelete = [];
@@ -583,7 +569,7 @@ async function getUsersFromRoomCode(roomCode) {
 async function executeQuery(query) {
     const queryString = query.join(' ');
     console.log('\t', queryString);
-    
+
     const client = await pool.connect();
     const { rows } = await client.query(queryString);
     client.release();
