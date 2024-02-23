@@ -8,8 +8,7 @@ let socket,
     playerReady = false,
     playerElement;
 
-let isDrawing = false,
-    canvasElement,
+let canvasElement,
     context,
     lastX,
     lastY,
@@ -99,7 +98,7 @@ function loadVideoById(newVideoID) {
 
 function setNumWatchers(newValue) {
     numWatchers = newValue;
-    document.getElementById('numWatchers').textContent = newValue;
+    $('#numWatchers').text(newValue);
 }
 
 function playVideo() {
@@ -168,7 +167,9 @@ function initSocket() {
         context.strokeStyle = data.color;
         context.lineWidth = data.lineWidth;
         context.beginPath();
-        context.moveTo(data.lastX, data.lastY);
+        if (data.lastX && data.lastY) {
+            context.moveTo(data.lastX, data.lastY);
+        }
         context.lineTo(data.x, data.y);
         context.stroke();
     });
@@ -233,14 +234,13 @@ function initSocket() {
 function initHTML() {
     // forces the youtube player to not be cached so that it loads correctly
     const scriptUrl = 'https://www.youtube.com/iframe_api?v=' + Date.now();
-    const scriptElement = document.createElement('script');
-    scriptElement.src = scriptUrl;
-    document.body.appendChild(scriptElement);
+    const scriptElement = $('<script></script>', { src: scriptUrl });
+    $('body').append(scriptElement);
 
-    document.getElementById('videoLinkInput').addEventListener('submit', function (event) {
+    $('#videoLinkInput').submit(function (event) {
         event.preventDefault();
 
-        const inputValue = document.getElementById('videoLink').value;
+        const inputValue = $('#videoLink').val();
         const retVal = getVideoIDFromURL(inputValue);
         const vID = retVal ? retVal : inputValue;
 
@@ -252,7 +252,7 @@ function initHTML() {
         });
     });
 
-    window.addEventListener('beforeunload', function (event) {
+    $(window).on('beforeunload', function () {
         socket.emit('watcherLeave', {
             roomCode: roomCode
         });
@@ -263,59 +263,127 @@ function initHTML() {
     context = canvasElement.getContext('2d');
     context.lineWidth = 2;
     context.strokeStyle = 'red';
-    canvasElement.addEventListener('mousedown', startDrawing);
-    canvasElement.addEventListener('mousemove', draw);
-    canvasElement.addEventListener('mouseup', stopDrawing);
-    canvasElement.addEventListener('mouseout', stopDrawing);
 
-    document.getElementById('drawButton').onclick = function () {
+    $('#drawButton').click(function () {
         if (drawingEnabled) {
             console.log('disable drawing');
             drawingEnabled = false;
             canvasElement.style.pointerEvents = 'none';
-            playerElement.style.pointerEvents = 'auto';
+            playerElement.css('pointer-events', 'auto');
         } else {
             console.log('enable drawing');
             drawingEnabled = true;
             canvasElement.style.pointerEvents = 'auto';
-            playerElement.style.pointerEvents = 'none';
+            playerElement.css('pointer-events', 'none');
         }
-    };
-}
-
-function startDrawing(event) {
-    if (!drawingEnabled) return;
-    isDrawing = true;
-    lastX = event.offsetX;
-    lastY = event.offsetY;
-    draw(event);
-}
-
-function draw(event) {
-    if (!isDrawing) return;
-
-    const x = event.offsetX;
-    const y = event.offsetY;
-
-    context.lineTo(x, y);
-    context.stroke();
-    socket.emit('draw', {
-        roomCode: roomCode,
-        x: x,
-        y: y,
-        lastX: lastX,
-        lastY: lastY,
-        color: context.strokeStyle,
-        lineWidth: context.lineWidth
     });
-
-    lastX = x;
-    lastY = y;
 }
 
-function stopDrawing() {
-    isDrawing = false;
-    context.beginPath();
+function initWhiteboard() {
+    if (canvasElement) {
+        let isDown = false;
+        let canvasX, canvasY;
+        context.lineWidth = 3;
+
+        $('#canvas')
+            .mousedown(function (e) {
+                isDown = true;
+                context.beginPath();
+                canvasX = e.offsetX;
+                canvasY = e.offsetY;
+                context.moveTo(canvasX, canvasY);
+
+                lastX = canvasX;
+                lastY = canvasY;
+            })
+            .mousemove(function (e) {
+                if (isDown !== false) {
+                    canvasX = e.offsetX;
+                    canvasY = e.offsetY;
+                    context.lineTo(canvasX, canvasY);
+                    context.strokeStyle = 'red';
+                    context.stroke();
+                    
+                    socket.emit('draw', {
+                        roomCode: roomCode,
+                        lastX: lastX,
+                        lastY: lastY,
+                        x: canvasX,
+                        y: canvasY,
+                        color: 'red',
+                        lineWidth: 3
+                    });
+    
+                    lastX = canvasX;
+                    lastY = canvasY;
+                }
+            })
+            .mouseup(function (e) {
+                isDown = false;
+                context.closePath();
+
+                lastX = null;
+                lastY = null;
+            });
+    }
+
+    // COMMENTED CODE IS FOR TOUCHSCREENS
+    // FUNCTIONAL BUT NOT DONE AND NOT WORKING
+    // ON IT FOR NOW
+
+    // draw = {
+    //     started: false,
+    //     start: function (evt) {
+    //         if (drawingEnabled) {
+    //             context.beginPath();
+    //             context.moveTo(
+    //                 evt.touches[0].pageX,
+    //                 evt.touches[0].pageY
+    //             );
+
+    //             lastX = evt.touches[0].pageX;
+    //             lastY = evt.touches[0].pageY;
+
+    //             this.started = true;
+    //         }
+    //     },
+    //     move: function (evt) {
+    //         if (this.started) {
+    //             context.lineTo(
+    //                 evt.touches[0].pageX,
+    //                 evt.touches[0].pageY
+    //             );
+
+    //             context.strokeStyle = 'red';
+    //             context.lineWidth = 3;
+    //             context.stroke();
+
+    //             console.log('EMITTING');
+    //             socket.emit('draw', {
+    //                 roomCode: roomCode,
+    //                 lastX: lastX,
+    //                 lastY: lastY,
+    //                 x: x,
+    //                 y: y,
+    //                 color: 'red',
+    //                 lineWidth: 3
+    //             });
+
+    //             lastX = x;
+    //             lastY = y;
+    //         }
+    //     },
+    //     end: function (evt) {
+    //         this.started = false;
+
+    //         lastX = null;
+    //         lastY = null;
+    //     }
+    // };
+
+    // canvasElement.addEventListener('touchstart', draw.start, false);
+    // canvasElement.addEventListener('touchend', draw.end, false);
+    // canvasElement.addEventListener('touchmove', draw.move, false);
 }
 
 function getCurrentDomain() {
@@ -334,12 +402,13 @@ function validateResponse(response) {
     return data;
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+window.onload = function () {
     roomCode = getRoomCode();
     setNumWatchers(0);
 
     initSocket();
     initHTML();
+    initWhiteboard();
 
     // async spinning until the player is ready
     // then we can request information from server about the video
@@ -349,7 +418,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        playerElement = document.getElementById('player');
+        playerElement = $('#player');
 
         socket.emit('watcherJoin', {
             roomCode: roomCode
@@ -363,4 +432,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     checkPlayer();
-});
+};
