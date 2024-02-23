@@ -131,7 +131,8 @@ async function getWatchRoomData(socket, data) {
                 videoID: 'Rz9Hokt6Jx4',
                 numWatchers: 1,
                 timestamp: 0.00,
-                playbackRate: 1
+                playbackRate: 1,
+                drawData: ''
             });
             return;
         }
@@ -143,7 +144,8 @@ async function getWatchRoomData(socket, data) {
             videoID: record[WATCH_ROOM_KEYS.VIDEO_ID],
             numWatchers: record[WATCH_ROOM_KEYS.NUM_WATCHERS],
             timestamp: record[WATCH_ROOM_KEYS.TIMESTAMP],
-            playbackRate: record[WATCH_ROOM_KEYS.PLAYBACK_RATE]
+            playbackRate: record[WATCH_ROOM_KEYS.PLAYBACK_RATE],
+            drawData: record[WATCH_ROOM_KEYS.DRAW_DATA]
         });
     } catch (err) {
         console.error(err);
@@ -263,12 +265,12 @@ async function draw(socket, data) {
             return;
         }
 
-        // const query = [
-        //     `UPDATE ${WATCH_ROOM_TABLE}`,
-        //     `SET ${WATCH_ROOM_KEYS.TIMESTAMP}=${timestamp}`,
-        //     `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${roomCode}';`
-        // ];
-        // const result = await executeQuery(query);
+        const query = [
+            `UPDATE ${WATCH_ROOM_TABLE}`,
+            `SET ${WATCH_ROOM_KEYS.DRAW_DATA}='${data.drawData}'`,
+            `WHERE ${WATCH_ROOM_KEYS.ROOM_CODE}='${data.roomCode}';`
+        ];
+        const result = await executeQuery(query);
 
         emitToRoomWatchers(socket, data.roomCode, responseSignal, data);
     } catch (err) {
@@ -568,7 +570,8 @@ async function getUsersFromRoomCode(roomCode) {
 
 async function executeQuery(query) {
     const queryString = query.join(' ');
-    console.log('\t', queryString);
+    console.log('\t', queryString.length > 100 ? `${queryString.substring(0, 100)}...` : queryString);
+
 
     const client = await pool.connect();
     const { rows } = await client.query(queryString);

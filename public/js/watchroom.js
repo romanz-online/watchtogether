@@ -6,13 +6,15 @@ let socket,
     videoID,
     numWatchers,
     playerReady = false,
-    playerElement;
+    $player;
 
-let canvasElement,
-    context,
-    lastX,
-    lastY,
-    drawingEnabled = false;
+let $canvas, context,
+    canvasX, canvasY,
+    lastX, lastY,
+    drawingEnabled = false,
+    canvasMouseDown;
+
+let $body;
 
 class Timer {
     constructor(callback) {
@@ -158,20 +160,25 @@ function initSocket() {
             setPlaybackRate(data.playbackRate);
 
         pauseVideo(); // ??? why doesn't this work?
+
+        const img = new Image();
+        img.src = data.drawData;
+        img.onload = function() {
+            context.clearRect(0, 0, $canvas.width, $canvas.height);
+            context.drawImage(img, 0, 0);
+        };
     });
 
     socket.on('drawResponse', (response) => {
         const data = validateResponse(response);
         if (!data) return;
 
-        context.strokeStyle = data.color;
-        context.lineWidth = data.lineWidth;
-        context.beginPath();
-        if (data.lastX && data.lastY) {
-            context.moveTo(data.lastX, data.lastY);
-        }
-        context.lineTo(data.x, data.y);
-        context.stroke();
+        const img = new Image();
+        img.src = data.drawData;
+        img.onload = function() {
+            context.clearRect(0, 0, $canvas.width, $canvas.height);
+            context.drawImage(img, 0, 0);
+        };
     });
 
     socket.on('loadVideoResponse', (response) => {
@@ -232,10 +239,13 @@ function initSocket() {
 }
 
 function initHTML() {
+    $canvas = $("canvas");
+    $body = $('body');
+
     // forces the youtube player to not be cached so that it loads correctly
     const scriptUrl = 'https://www.youtube.com/iframe_api?v=' + Date.now();
     const scriptElement = $('<script></script>', { src: scriptUrl });
-    $('body').append(scriptElement);
+    $body.append(scriptElement);
 
     $('#videoLinkInput').submit(function (event) {
         event.preventDefault();
@@ -258,132 +268,61 @@ function initHTML() {
         });
     });
 
-    // canvasElement
-    canvasElement = document.getElementById('canvas');
-    context = canvasElement.getContext('2d');
-    context.lineWidth = 2;
+    context = $canvas[0].getContext("2d");
+    context.lineWidth = 3;
     context.strokeStyle = 'red';
 
     $('#drawButton').click(function () {
+        drawingEnabled = !drawingEnabled;
         if (drawingEnabled) {
-            console.log('disable drawing');
-            drawingEnabled = false;
-            canvasElement.style.pointerEvents = 'none';
-            playerElement.css('pointer-events', 'auto');
+            $canvas.css('pointer-events', 'auto');
+            $player.css('pointer-events', 'none');
         } else {
-            console.log('enable drawing');
-            drawingEnabled = true;
-            canvasElement.style.pointerEvents = 'auto';
-            playerElement.css('pointer-events', 'none');
+            $canvas.css('pointer-events', 'none');
+            $player.css('pointer-events', 'auto');
         }
     });
 }
 
 function initWhiteboard() {
-    if (canvasElement) {
-        let isDown = false;
-        let canvasX, canvasY;
-        context.lineWidth = 3;
+    canvasMouseDown = false;
 
-        $('#canvas')
-            .mousedown(function (e) {
-                isDown = true;
-                context.beginPath();
-                canvasX = e.offsetX;
-                canvasY = e.offsetY;
-                context.moveTo(canvasX, canvasY);
+    $canvas.mousedown(function (e) {
+        canvasMouseDown = true;
+        context.beginPath();
+        canvasX = e.offsetX;
+        canvasY = e.offsetY;
+        context.moveTo(canvasX, canvasY);
 
-                lastX = canvasX;
-                lastY = canvasY;
-            })
-            .mousemove(function (e) {
-                if (isDown !== false) {
-                    canvasX = e.offsetX;
-                    canvasY = e.offsetY;
-                    context.lineTo(canvasX, canvasY);
-                    context.strokeStyle = 'red';
-                    context.stroke();
-                    
-                    socket.emit('draw', {
-                        roomCode: roomCode,
-                        lastX: lastX,
-                        lastY: lastY,
-                        x: canvasX,
-                        y: canvasY,
-                        color: 'red',
-                        lineWidth: 3
-                    });
-    
-                    lastX = canvasX;
-                    lastY = canvasY;
-                }
-            })
-            .mouseup(function (e) {
-                isDown = false;
-                context.closePath();
+        lastX = canvasX;
+        lastY = canvasY;
+    }).mousemove(function (e) {
+        if (!canvasMouseDown) return;
+        if (!drawingEnabled) return;
 
-                lastX = null;
-                lastY = null;
-            });
-    }
+        canvasX = e.offsetX;
+        canvasY = e.offsetY;
+        context.lineTo(canvasX, canvasY);
+        context.stroke();
 
-    // COMMENTED CODE IS FOR TOUCHSCREENS
-    // FUNCTIONAL BUT NOT DONE AND NOT WORKING
-    // ON IT FOR NOW
+        socket.emit('draw', {
+            roomCode: roomCode,
+            drawData: $canvas[0].toDataURL()
+        });
 
-    // draw = {
-    //     started: false,
-    //     start: function (evt) {
-    //         if (drawingEnabled) {
-    //             context.beginPath();
-    //             context.moveTo(
-    //                 evt.touches[0].pageX,
-    //                 evt.touches[0].pageY
-    //             );
+        console.log($canvas[0].toDataURL());
 
-    //             lastX = evt.touches[0].pageX;
-    //             lastY = evt.touches[0].pageY;
+        lastX = canvasX;
+        lastY = canvasY;
+    }).mouseup(function () {
+        canvasMouseDown = false;
+        context.closePath();
 
-    //             this.started = true;
-    //         }
-    //     },
-    //     move: function (evt) {
-    //         if (this.started) {
-    //             context.lineTo(
-    //                 evt.touches[0].pageX,
-    //                 evt.touches[0].pageY
-    //             );
-
-    //             context.strokeStyle = 'red';
-    //             context.lineWidth = 3;
-    //             context.stroke();
-
-    //             console.log('EMITTING');
-    //             socket.emit('draw', {
-    //                 roomCode: roomCode,
-    //                 lastX: lastX,
-    //                 lastY: lastY,
-    //                 x: x,
-    //                 y: y,
-    //                 color: 'red',
-    //                 lineWidth: 3
-    //             });
-
-    //             lastX = x;
-    //             lastY = y;
-    //         }
-    //     },
-    //     end: function (evt) {
-    //         this.started = false;
-
-    //         lastX = null;
-    //         lastY = null;
-    //     }
-    // };
-
-    // canvasElement.addEventListener('touchstart', draw.start, false);
-    // canvasElement.addEventListener('touchend', draw.end, false);
-    // canvasElement.addEventListener('touchmove', draw.move, false);
+        lastX = null;
+        lastY = null;
+    }).mouseleave(function () {
+        $canvas.mouseup();
+    });
 }
 
 function getCurrentDomain() {
@@ -418,7 +357,7 @@ window.onload = function () {
             return;
         }
 
-        playerElement = $('#player');
+        $player = $('#player');
 
         socket.emit('watcherJoin', {
             roomCode: roomCode

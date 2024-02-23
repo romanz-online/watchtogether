@@ -1,7 +1,5 @@
-let socket;
-
 document.addEventListener('DOMContentLoaded', function () {
-    socket = io();
+    const socket = io();
 
     socket.on('createWatchRoomResponse', (response) => {
         const { success, signal, data } = response;

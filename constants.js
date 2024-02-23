@@ -7,7 +7,8 @@ module.exports = {
         NUM_WATCHERS: 'num_watchers',
         TIMESTAMP: 'timestamp',
         PLAYBACK_RATE: 'playback_rate',
-        EMPTY_SINCE: 'empty_since'
+        EMPTY_SINCE: 'empty_since',
+        DRAW_DATA: 'draw_data'
     },
     WATCH_ROOM_USER_KEYS: {
         SOCKET_ID: 'socket_id',
@@ -37,7 +38,8 @@ module.exports = {
 //     num_watchers INTEGER DEFAULT 0,
 //     timestamp DOUBLE PRECISION DEFAULT 0.0,
 //     playback_rate DOUBLE PRECISION DEFAULT 1.0,
-//     empty_since TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+//     empty_since TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+//     draw_data TEXT DEFAULT ''
 // );
 
 // CREATE TABLE WatchRoomUser (
