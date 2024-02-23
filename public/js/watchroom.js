@@ -138,6 +138,15 @@ function copyURLToClipboard() {
     navigator.clipboard.writeText(window.location.href);
 }
 
+function drawImage(data) {
+    const img = new Image();
+    img.src = data;
+    img.onload = function() {
+        context.clearRect(0, 0, $canvas.width, $canvas.height);
+        context.drawImage(img, 0, 0);
+    };
+}
+
 function initSocket() {
     socket = io();
 
@@ -161,24 +170,14 @@ function initSocket() {
 
         pauseVideo(); // ??? why doesn't this work?
 
-        const img = new Image();
-        img.src = data.drawData;
-        img.onload = function() {
-            context.clearRect(0, 0, $canvas.width, $canvas.height);
-            context.drawImage(img, 0, 0);
-        };
+        drawImage(data.drawData);
     });
 
     socket.on('drawResponse', (response) => {
         const data = validateResponse(response);
         if (!data) return;
 
-        const img = new Image();
-        img.src = data.drawData;
-        img.onload = function() {
-            context.clearRect(0, 0, $canvas.width, $canvas.height);
-            context.drawImage(img, 0, 0);
-        };
+        drawImage(data.drawData);
     });
 
     socket.on('loadVideoResponse', (response) => {
