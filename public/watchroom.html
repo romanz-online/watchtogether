@@ -13,16 +13,41 @@
 </head>
 
 <body>
-    <div id="container">
-        <div id="player"></div>
-        <canvas id="canvas" width="640" height="360"></canvas>
+    <div>
+        <div id="container">
+            <div id="player"></div>
+            <canvas id="canvas" width="640" height="360"></canvas>
+        </div>
+        <form id="videoLinkInput">
+            <input type="text" id="videoLink">
+            <button type="submit">Submit</button>
+        </form>
+        <div id="numWatchers">0</div>
     </div>
-    <form id="videoLinkInput">
-        <input type="text" id="videoLink">
-        <button type="submit">Submit</button>
-    </form>
-    <div id="numWatchers">0</div>
-    <button id="drawButton">Draw</button>
+
+    <div id="sidebar">
+        <button id="drawButton">Draw</button>
+        <div class="colorButtons">
+            <h3>Color</h3>
+            <input type="color" id="colorpicker" value="#c81464" class="colorpicker">
+        </div>
+
+        <div class="toolsButtons">
+            <h3>Tools</h3>
+            <button id="eraser" class="btn"><span aria-hidden="true">erase</span></button>
+            <button id="clear" class="btn"><span aria-hidden="true">clear</span></button>
+        </div>
+
+        <div class="buttonSize">
+            <h3>Size (<span id="showSize">2</span>)</h3>
+            <div style="display: flex; flex-direction: row;">
+                <button id="brushSize1" class="btn"><span aria-hidden="true">1</span></button>
+                <button id="brushSize2" class="btn"><span aria-hidden="true">2</span></button>
+                <button id="brushSize3" class="btn"><span aria-hidden="true">3</span></button>
+            </div>
+            <!-- <input type="range" min="1" max="50" value="5" step="1" id="controlSize"> -->
+        </div>
+    </div>
 </body>
 
 </html>

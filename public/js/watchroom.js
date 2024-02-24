@@ -12,7 +12,9 @@ let $canvas, context,
     canvasX, canvasY,
     lastX, lastY,
     drawingEnabled = false,
-    canvasMouseDown;
+    canvasMouseDown,
+    brushSize = 5,
+    brushColor = 'rgb(200,20,100)';
 
 let $body;
 
@@ -138,11 +140,11 @@ function copyURLToClipboard() {
     navigator.clipboard.writeText(window.location.href);
 }
 
-function drawImage(data) {
+function drawDataToCanvas(data) {
     const img = new Image();
     img.src = data;
-    img.onload = function() {
-        context.clearRect(0, 0, $canvas.width, $canvas.height);
+    img.onload = function () {
+        context.clearRect(0, 0, $canvas.width(), $canvas.height());
         context.drawImage(img, 0, 0);
     };
 }
@@ -170,14 +172,14 @@ function initSocket() {
 
         pauseVideo(); // ??? why doesn't this work?
 
-        drawImage(data.drawData);
+        drawDataToCanvas(data.drawData);
     });
 
     socket.on('drawResponse', (response) => {
         const data = validateResponse(response);
         if (!data) return;
 
-        drawImage(data.drawData);
+        drawDataToCanvas(data.drawData);
     });
 
     socket.on('loadVideoResponse', (response) => {
@@ -304,13 +306,6 @@ function initWhiteboard() {
         context.lineTo(canvasX, canvasY);
         context.stroke();
 
-        socket.emit('draw', {
-            roomCode: roomCode,
-            drawData: $canvas[0].toDataURL()
-        });
-
-        console.log($canvas[0].toDataURL());
-
         lastX = canvasX;
         lastY = canvasY;
     }).mouseup(function () {
@@ -319,8 +314,28 @@ function initWhiteboard() {
 
         lastX = null;
         lastY = null;
+
+        socket.emit('draw', {
+            roomCode: roomCode,
+            drawData: $canvas[0].toDataURL()
+        });
     }).mouseleave(function () {
         $canvas.mouseup();
+    });
+
+    // document.getElementById('colorpicker').addEventListener('change', function () {
+    //     currentColor = this.value;
+    // });
+    $('#eraser').click(function () {
+        // context.strokeStyle = 'rgba(1,0,0,0)';
+        // eraser don't work :(
+    });
+    $('#clear').click(function () {
+        context.clearRect(0, 0, $canvas.width(), $canvas.height());
+        socket.emit('draw', {
+            roomCode: roomCode,
+            drawData: $canvas[0].toDataURL()
+        });
     });
 }
 
