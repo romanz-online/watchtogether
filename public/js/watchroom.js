@@ -315,7 +315,7 @@ function initWhiteboard() {
     });
 
     changeBrushWidth = value => context.lineWidth = value;
-    
+
     $('#drawButton').click(function () {
         drawingEnabled = !drawingEnabled;
         if (drawingEnabled) {
@@ -330,14 +330,10 @@ function initWhiteboard() {
     // document.getElementById('colorpicker').addEventListener('change', function () {
     //     currentColor = this.value;
     // });
-    
+
     $('#eraser').click(function () {
         eraserEnabled = !eraserEnabled;
-        if (eraserEnabled) {
-            context.globalCompositeOperation = 'destination-out';
-        } else {
-            context.globalCompositeOperation = 'source-over';
-        }
+        context.globalCompositeOperation = eraserEnabled ? 'destination-out' : 'source-over';
     });
     $('#clear').click(function () {
         context.clearRect(0, 0, $canvas.width(), $canvas.height());
