@@ -12,9 +12,11 @@ let $canvas, context,
     canvasX, canvasY,
     lastX, lastY,
     drawingEnabled = false,
+    eraserEnabled = false,
     canvasMouseDown,
     brushSize = 5,
-    brushColor = 'rgb(200,20,100)';
+    brushColor = 'rgb(200,20,100)',
+    changeBrushWidth;
 
 let $body;
 
@@ -268,24 +270,13 @@ function initHTML() {
             roomCode: roomCode
         });
     });
-
-    context = $canvas[0].getContext("2d");
-    context.lineWidth = 3;
-    context.strokeStyle = 'red';
-
-    $('#drawButton').click(function () {
-        drawingEnabled = !drawingEnabled;
-        if (drawingEnabled) {
-            $canvas.css('pointer-events', 'auto');
-            $player.css('pointer-events', 'none');
-        } else {
-            $canvas.css('pointer-events', 'none');
-            $player.css('pointer-events', 'auto');
-        }
-    });
 }
 
 function initWhiteboard() {
+    context = $canvas[0].getContext("2d");
+    context.lineWidth = 2;
+    context.strokeStyle = 'red';
+
     canvasMouseDown = false;
 
     $canvas.mousedown(function (e) {
@@ -323,12 +314,30 @@ function initWhiteboard() {
         $canvas.mouseup();
     });
 
+    changeBrushWidth = value => context.lineWidth = value;
+    
+    $('#drawButton').click(function () {
+        drawingEnabled = !drawingEnabled;
+        if (drawingEnabled) {
+            $canvas.css('pointer-events', 'auto');
+            $player.css('pointer-events', 'none');
+        } else {
+            $canvas.css('pointer-events', 'none');
+            $player.css('pointer-events', 'auto');
+        }
+    });
+
     // document.getElementById('colorpicker').addEventListener('change', function () {
     //     currentColor = this.value;
     // });
+    
     $('#eraser').click(function () {
-        // context.strokeStyle = 'rgba(1,0,0,0)';
-        // eraser don't work :(
+        eraserEnabled = !eraserEnabled;
+        if (eraserEnabled) {
+            context.globalCompositeOperation = 'destination-out';
+        } else {
+            context.globalCompositeOperation = 'source-over';
+        }
     });
     $('#clear').click(function () {
         context.clearRect(0, 0, $canvas.width(), $canvas.height());

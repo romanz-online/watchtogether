@@ -39,13 +39,12 @@
         </div>
 
         <div class="buttonSize">
-            <h3>Size (<span id="showSize">2</span>)</h3>
+            <h3>Brush Size</h3>
             <div style="display: flex; flex-direction: row;">
-                <button id="brushSize1" class="btn"><span aria-hidden="true">1</span></button>
-                <button id="brushSize2" class="btn"><span aria-hidden="true">2</span></button>
-                <button id="brushSize3" class="btn"><span aria-hidden="true">3</span></button>
+                <button class="btn" value="2" onclick="changeBrushWidth(this.value)">1</button>
+                <button class="btn" value="5" onclick="changeBrushWidth(this.value)">2</button>
+                <button class="btn" value="10" onclick="changeBrushWidth(this.value)">3</button>
             </div>
-            <!-- <input type="range" min="1" max="50" value="5" step="1" id="controlSize"> -->
         </div>
     </div>
 </body>

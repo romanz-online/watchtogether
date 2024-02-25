@@ -142,7 +142,7 @@ async function getWatchRoomData(socket, data) {
         socketEmit(socket, responseSignal, true, {
             roomCode: roomCode,
             videoID: record[WATCH_ROOM_KEYS.VIDEO_ID],
-            numWatchers: record[WATCH_ROOM_KEYS.NUM_WATCHERS],
+            numWatchers: record[WATCH_ROOM_KEYS.NUM_WATCHERS] + 1,
             timestamp: record[WATCH_ROOM_KEYS.TIMESTAMP],
             playbackRate: record[WATCH_ROOM_KEYS.PLAYBACK_RATE],
             drawData: record[WATCH_ROOM_KEYS.DRAW_DATA]
@@ -491,7 +491,7 @@ async function emitToRoomWatchers(socket, roomCode, signal, data) {
         const result = await getUsersFromRoomCode(roomCode);
         for (const row of result) {
             const socket_id = row[WATCH_ROOM_USER_KEYS.SOCKET_ID];
-            if (/*socket_id !== socket.id &&*/ connectedClients[socket_id]) {
+            if (socket_id !== socket.id && connectedClients[socket_id]) {
                 socketEmit(connectedClients[socket_id], signal, true, data);
             }
         }
