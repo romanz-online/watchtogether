@@ -16,7 +16,8 @@ let $canvas, context,
     canvasMouseDown,
     brushSize = 5,
     brushColor = 'rgb(200,20,100)',
-    changeBrushWidth;
+    changeBrushWidth,
+    changeBrushColor;
 
 let $body;
 
@@ -172,7 +173,7 @@ function initSocket() {
         if (player.getPlaybackRate() !== data.playbackRate)
             setPlaybackRate(data.playbackRate);
 
-        pauseVideo(); // ??? why doesn't this work?
+        pauseVideo();
 
         drawDataToCanvas(data.drawData);
     });
@@ -315,6 +316,7 @@ function initWhiteboard() {
     });
 
     changeBrushWidth = value => context.lineWidth = value;
+    changeBrushColor = value => context.strokeStyle = value;
 
     $('#drawButton').click(function () {
         drawingEnabled = !drawingEnabled;
@@ -327,14 +329,11 @@ function initWhiteboard() {
         }
     });
 
-    // document.getElementById('colorpicker').addEventListener('change', function () {
-    //     currentColor = this.value;
-    // });
-
     $('#eraser').click(function () {
         eraserEnabled = !eraserEnabled;
         context.globalCompositeOperation = eraserEnabled ? 'destination-out' : 'source-over';
     });
+    
     $('#clear').click(function () {
         context.clearRect(0, 0, $canvas.width(), $canvas.height());
         socket.emit('draw', {
