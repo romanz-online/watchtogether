@@ -16,7 +16,6 @@ let $canvas, context,
     canvasMouseDown,
     brushSize = 5,
     brushColor = 'rgb(200,20,100)',
-    changeBrushWidth,
     changeBrushColor;
 
 let $body;
@@ -315,7 +314,10 @@ function initWhiteboard() {
         $canvas.mouseup();
     });
 
-    changeBrushWidth = value => context.lineWidth = value;
+    $('.brush-size-btn').click(function () {
+        context.lineWidth = parseInt($(this).attr('value'));
+    });
+
     changeBrushColor = value => context.strokeStyle = value;
 
     $('#drawButton').click(function () {
@@ -333,7 +335,7 @@ function initWhiteboard() {
         eraserEnabled = !eraserEnabled;
         context.globalCompositeOperation = eraserEnabled ? 'destination-out' : 'source-over';
     });
-    
+
     $('#clear').click(function () {
         context.clearRect(0, 0, $canvas.width(), $canvas.height());
         socket.emit('draw', {
